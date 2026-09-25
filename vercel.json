@@ -13,12 +13,34 @@
       "headers": [
         {
           "key": "Cross-Origin-Opener-Policy",
-          "value": "unsafe-none"
+          "value": "same-origin-allow-popups"
         }
       ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/link/:username",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(bot|crawler|spider|facebookexternalhit|WhatsApp|Telegram|Twitter|Slack|LinkedIn).*"
+        }
+      ],
+      "destination": "/api/og-link?username=:username"
+    },
+    {
+      "source": "/artist/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(bot|crawler|spider|facebookexternalhit|WhatsApp|Telegram|Twitter|Slack|LinkedIn).*"
+        }
+      ],
+      "destination": "/api/og-artist?id=:id"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
