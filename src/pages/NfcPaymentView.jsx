@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { SmartphoneNfc, ExternalLink, AlertCircle } from 'lucide-react';
 import { API_URL } from '../services/api';
 
 function buildLocalUpiLinks({ payeeUpiId, amount }) {
@@ -37,7 +36,7 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
     }
 
     if (!tagCode) {
-      setError('Missing tag code');
+      setError('MISSING TAG CODE');
       setLoading(false);
       return;
     }
@@ -50,14 +49,14 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
         const res = await fetch(`${API_URL}/api/pay/${encodeURIComponent(tagCode)}`);
         const json = await res.json();
         if (!res.ok || !json.success) {
-          throw new Error(json.message || 'Unable to retrieve payment tag details');
+          throw new Error(json.message || 'TAG NOT FOUND');
         }
         if (isMounted) {
           setData(json.data);
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.message || 'Failed to load payment information');
+          setError(err.message || 'FAILED TO LOAD PAYMENT');
         }
       } finally {
         if (isMounted) {
@@ -79,12 +78,14 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
     }
   };
 
+  const formattedAmount = Number(data?.amount || 0).toLocaleString('en-IN');
+
   if (loading) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <div style={styles.spinner} />
-          <p style={styles.loadingText}>Connecting to NFC Payment...</p>
+          <div style={styles.pixelSpinner} />
+          <p style={styles.loadingText}>CONNECTING...</p>
         </div>
       </div>
     );
@@ -94,14 +95,12 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <div style={styles.errorIcon}>
-            <AlertCircle size={44} color="#ef4444" />
-          </div>
-          <h2 style={styles.errorTitle}>Payment Tag Inactive</h2>
-          <p style={styles.errorDescription}>{error || 'This NFC payment tag is currently unavailable.'}</p>
-          <div style={styles.tagBadge}>Tag: {tagCode?.toUpperCase()}</div>
+          <div style={styles.errorIcon}>[ ! ]</div>
+          <h2 style={styles.errorTitle}>TAG INACTIVE</h2>
+          <p style={styles.errorDescription}>{error || 'UNAVAILABLE'}</p>
+          <div style={styles.tagBadge}>TAG: {tagCode?.toUpperCase()}</div>
           <button style={styles.retryBtn} onClick={() => window.location.reload()}>
-            Try Again
+            TRY AGAIN
           </button>
         </div>
       </div>
@@ -110,17 +109,12 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
 
   return (
     <div style={styles.container}>
-      {/* Background glow effects */}
-      <div style={styles.bgGlowTop} />
-      <div style={styles.bgGlowBottom} />
-
       <main style={styles.card}>
         {/* Header Tag Pill */}
         {data.tagCode && (
           <div style={styles.headerRow}>
             <div style={styles.tagPill}>
-              <SmartphoneNfc size={14} color="#6366f1" />
-              <span>{data.tagCode}</span>
+              <span>[{data.tagCode}]</span>
             </div>
           </div>
         )}
@@ -131,40 +125,32 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
           {data.title ? <p style={styles.tagTitle}>{data.title}</p> : null}
         </div>
 
-        {/* Amount Display */}
+        {/* Amount Box */}
         <div style={styles.amountCard}>
-          <span style={styles.amountLabel}>Total Payable Amount</span>
+          <span style={styles.amountLabel}>TOTAL PAYABLE AMOUNT</span>
           <div style={styles.amountValueRow}>
             <span style={styles.currencySymbol}>₹</span>
-            <span style={styles.amountNumber}>{Number(data.amount).toLocaleString('en-IN')}</span>
+            <span style={styles.amountNumber}>{formattedAmount}</span>
           </div>
           {data.note ? <p style={styles.paymentNote}>"{data.note}"</p> : null}
         </div>
 
-        {/* Main CTA: Pay with UPI */}
+        {/* Main CTA: Pay with Nano */}
         <button
           style={styles.primaryPayBtn}
           onClick={() => handlePayNow(data.links?.upiIntentUrl)}
         >
-          <span>Pay ₹{Number(data.amount).toLocaleString('en-IN')} with UPI</span>
-          <ExternalLink size={18} />
+          <span>PAY ₹{formattedAmount} WITH NANO</span>
+          <span style={{ fontSize: '14px', marginLeft: '6px' }}>►</span>
         </button>
 
         {typeof onBackToProfile === 'function' && (
           <button
             type="button"
             onClick={onBackToProfile}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '13px',
-              cursor: 'pointer',
-              marginTop: '0.75rem',
-              textDecoration: 'underline'
-            }}
+            style={styles.backBtn}
           >
-            View Digital Profile instead →
+            ← VIEW PROFILE
           </button>
         )}
       </main>
@@ -178,66 +164,42 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#090d16',
-    color: '#f8fafc',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    background: '#000000',
+    color: '#ffffff',
+    fontFamily: '"Press Start 2P", monospace',
     padding: '1.25rem',
     position: 'relative',
-    overflow: 'hidden'
-  },
-  bgGlowTop: {
-    position: 'absolute',
-    top: '-15%',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '450px',
-    height: '450px',
-    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%)',
-    pointerEvents: 'none'
-  },
-  bgGlowBottom: {
-    position: 'absolute',
-    bottom: '-15%',
-    right: '10%',
-    width: '350px',
-    height: '350px',
-    background: 'radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0) 70%)',
-    pointerEvents: 'none'
+    boxSizing: 'border-box'
   },
   card: {
     width: '100%',
     maxWidth: '380px',
-    background: 'rgba(15, 23, 42, 0.85)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '24px',
+    background: '#000000',
+    border: '2px solid #ffffff',
+    borderRadius: '0px',
     padding: '2rem 1.5rem',
-    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+    boxShadow: '6px 6px 0px #ffffff',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    zIndex: 10
+    boxSizing: 'border-box'
   },
   headerRow: {
     width: '100%',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: '1rem'
+    marginBottom: '1.25rem'
   },
   tagPill: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    background: 'rgba(99, 102, 241, 0.12)',
-    border: '1px solid rgba(99, 102, 241, 0.3)',
-    borderRadius: '20px',
-    padding: '4px 12px',
-    fontSize: '12px',
-    fontWeight: 700,
-    color: '#a5b4fc',
-    letterSpacing: '0.5px'
+    display: 'inline-block',
+    border: '1px solid #ffffff',
+    borderRadius: '0px',
+    padding: '4px 10px',
+    fontSize: '10px',
+    color: '#ffffff',
+    letterSpacing: '1px',
+    background: '#000000'
   },
   payeeSection: {
     width: '100%',
@@ -245,121 +207,130 @@ const styles = {
     marginBottom: '1.5rem'
   },
   payeeName: {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    margin: '0 0 4px 0',
+    fontSize: 'clamp(13px, 3.5vw, 16px)',
+    lineHeight: '1.5',
+    margin: '0 0 8px 0',
     color: '#ffffff',
-    letterSpacing: '-0.3px'
+    letterSpacing: '0px'
   },
   tagTitle: {
-    fontSize: '0.875rem',
-    color: '#94a3b8',
-    margin: '0'
+    fontSize: '9px',
+    lineHeight: '1.6',
+    color: '#a3a3a3',
+    margin: '0',
+    textTransform: 'uppercase'
   },
   amountCard: {
     width: '100%',
-    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
-    border: '1px solid rgba(99, 102, 241, 0.25)',
-    borderRadius: '16px',
+    background: '#000000',
+    border: '2px solid #ffffff',
+    borderRadius: '0px',
     padding: '1.25rem',
     textAlign: 'center',
     marginBottom: '1.5rem',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)'
+    boxShadow: '4px 4px 0px #ffffff',
+    boxSizing: 'border-box'
   },
   amountLabel: {
-    fontSize: '12px',
-    textTransform: 'uppercase',
+    fontSize: '8px',
     letterSpacing: '1px',
-    color: '#94a3b8',
-    fontWeight: 600,
+    color: '#a3a3a3',
     display: 'block',
-    marginBottom: '6px'
+    marginBottom: '10px'
   },
   amountValueRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '4px'
+    gap: '6px'
   },
   currencySymbol: {
-    fontSize: '1.75rem',
-    fontWeight: 700,
-    color: '#818cf8'
+    fontSize: 'clamp(18px, 4.5vw, 22px)',
+    color: '#ffffff'
   },
   amountNumber: {
-    fontSize: '2.5rem',
-    fontWeight: 800,
+    fontSize: 'clamp(20px, 5.5vw, 26px)',
     color: '#ffffff',
-    letterSpacing: '-1px'
+    letterSpacing: '0px'
   },
   paymentNote: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    fontStyle: 'italic',
-    margin: '8px 0 0 0'
+    fontSize: '8px',
+    lineHeight: '1.5',
+    color: '#a3a3a3',
+    margin: '10px 0 0 0',
+    textTransform: 'uppercase'
   },
   primaryPayBtn: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
-    background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '14px',
-    padding: '14px 20px',
-    fontSize: '16px',
-    fontWeight: 700,
+    background: '#ffffff',
+    color: '#000000',
+    border: '2px solid #ffffff',
+    borderRadius: '0px',
+    padding: '14px 16px',
+    fontSize: 'clamp(10px, 2.8vw, 12px)',
+    fontFamily: '"Press Start 2P", monospace',
     cursor: 'pointer',
-    boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)',
-    transition: 'transform 0.15s, box-shadow 0.15s'
+    boxShadow: '4px 4px 0px #ffffff',
+    transition: 'transform 0.1s, box-shadow 0.1s',
+    boxSizing: 'border-box',
+    lineHeight: '1.4'
   },
-  spinner: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    border: '3px solid rgba(99, 102, 241, 0.2)',
-    borderTopColor: '#6366f1',
-    animation: 'spin 1s linear infinite'
+  pixelSpinner: {
+    width: '32px',
+    height: '32px',
+    border: '4px solid #ffffff',
+    borderTopColor: '#000000',
+    borderRadius: '0px',
+    animation: 'spin 0.8s linear infinite'
   },
   loadingText: {
     marginTop: '1rem',
-    fontSize: '14px',
-    color: '#94a3b8'
+    fontSize: '10px',
+    color: '#ffffff'
   },
   errorIcon: {
+    fontSize: '20px',
+    color: '#ffffff',
     marginBottom: '0.75rem'
   },
   errorTitle: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
+    fontSize: '12px',
     color: '#ffffff',
-    margin: '0 0 6px 0'
+    margin: '0 0 8px 0'
   },
   errorDescription: {
-    fontSize: '13px',
-    color: '#94a3b8',
+    fontSize: '9px',
+    color: '#a3a3a3',
     textAlign: 'center',
     margin: '0 0 1rem 0'
   },
   tagBadge: {
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '1px solid rgba(239, 68, 68, 0.25)',
-    borderRadius: '6px',
-    padding: '4px 10px',
-    fontSize: '12px',
-    fontWeight: 700,
-    color: '#f87171',
+    border: '1px solid #ffffff',
+    padding: '4px 8px',
+    fontSize: '9px',
+    color: '#ffffff',
     marginBottom: '1.25rem'
   },
   retryBtn: {
-    background: 'rgba(255, 255, 255, 0.08)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    color: '#ffffff',
-    borderRadius: '10px',
-    padding: '8px 18px',
-    fontSize: '13px',
+    background: '#ffffff',
+    border: '2px solid #ffffff',
+    color: '#000000',
+    padding: '8px 16px',
+    fontSize: '9px',
+    fontFamily: '"Press Start 2P", monospace',
     cursor: 'pointer'
+  },
+  backBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#a3a3a3',
+    fontSize: '9px',
+    fontFamily: '"Press Start 2P", monospace',
+    cursor: 'pointer',
+    marginTop: '1rem',
+    textDecoration: 'underline'
   }
 };
