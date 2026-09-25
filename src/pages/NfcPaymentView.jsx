@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_URL } from '../services/api';
 
-function buildLocalUpiLinks({ payeeUpiId, amount }) {
+function buildLocalUpiLinks({ payeeUpiId, payeeName, amount }) {
   const upid = String(payeeUpiId || '').trim();
   const cleanAmount = Number(amount || 0);
-  const baseQuery = `pa=${upid}&am=${cleanAmount}&cu=INR`;
+  const name = encodeURIComponent(String(payeeName || 'Merchant').trim());
+  const baseQuery = `pa=${upid}&pn=${name}&am=${cleanAmount}&cu=INR`;
 
   return {
     upiIntentUrl: `upi://pay?${baseQuery}`
