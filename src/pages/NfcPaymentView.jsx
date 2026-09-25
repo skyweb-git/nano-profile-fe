@@ -3,28 +3,18 @@ import { useParams } from 'react-router-dom';
 import { ShieldCheck, SmartphoneNfc, QrCode, Copy, Check, ExternalLink, AlertCircle } from 'lucide-react';
 import { API_URL } from '../services/api';
 
-function buildLocalUpiLinks({ payeeUpiId, payeeName, amount, note, tagCode }) {
-  const cleanAmount = Number(amount || 0).toFixed(2);
-  const cleanNote = (note || `Payment for ${tagCode || 'NFC'}`).slice(0, 50);
-  const txnRef = `${(tagCode || 'PAY').replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString().slice(-6)}`;
+function buildLocalUpiLinks({ payeeUpiId, amount }) {
+  const upid = String(payeeUpiId || '').trim();
+  const cleanAmount = Number(amount || 0);
+  const baseQuery = `pa=${upid}&am=${cleanAmount}&cu=INR`;
 
-  const params = new URLSearchParams({
-    pa: payeeUpiId,
-    pn: payeeName || 'Payee',
-    am: cleanAmount,
-    cu: 'INR',
-    tn: cleanNote,
-    tr: txnRef
-  });
-
-  const queryString = params.toString();
   return {
-    upiIntentUrl: `upi://pay?${queryString}`,
-    gpayUrl: `tez://upi/pay?${queryString}`,
-    phonepeUrl: `phonepe://pay?${queryString}`,
-    paytmUrl: `paytmmp://pay?${queryString}`,
-    bhimUrl: `upi://pay?${queryString}`,
-    qrPayload: `upi://pay?${queryString}`
+    upiIntentUrl: `upi://pay?${baseQuery}`,
+    gpayUrl: `tez://upi/pay?${baseQuery}`,
+    phonepeUrl: `phonepe://pay?${baseQuery}`,
+    paytmUrl: `paytmmp://pay?${baseQuery}`,
+    bhimUrl: `upi://pay?${baseQuery}`,
+    qrPayload: `upi://pay?${baseQuery}`
   };
 }
 
