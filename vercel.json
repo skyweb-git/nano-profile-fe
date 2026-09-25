@@ -1,0 +1,27 @@
+{
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "CI=false GENERATE_SOURCEMAP=false npm run build",
+  "env": {
+    "CI": "false",
+    "GENERATE_SOURCEMAP": "false"
+  },
+  "outputDirectory": "build",
+  "framework": "create-react-app",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "unsafe-none"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

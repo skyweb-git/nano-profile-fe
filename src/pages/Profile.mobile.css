@@ -1,0 +1,26 @@
+/* Clean mobile resets for the editor */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll drift */
+  html, body, .dash-root {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Input overflow protection inside mobile modals/editors */
+  input, select, textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Ensure iframe loads properly without border radius */
+  iframe {
+    border-radius: 0 !important;
+  }
+
+  /* Hide desktop editor headers on mobile viewports */
+  .dash-editor-header-title,
+  .dash-editor-header-toggle-container {
+    display: none !important;
+  }
+}

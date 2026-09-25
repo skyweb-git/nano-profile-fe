@@ -1,0 +1,186 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { auth, onAuthStateChanged, logout } from '../../firebase';
+import './HomeNavbar.overrides.css';
+
+export default function HomeNavbar() {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+
+    const isHomeActive = pathname === '/';
+    const isArtistActive = pathname.startsWith('/artist-showcase') || pathname === '/artist';
+    const isProfessionalActive = pathname.startsWith('/professional-showcase') || pathname === '/professional';
+    const isStudentActive = pathname.startsWith('/student-showcase') || pathname === '/student';
+    const isRestaurantActive = pathname.startsWith('/restaurant-showcase') || pathname.startsWith('/link/');
+    const avatarMenuRef = useRef(null);
+
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+                setAvatarMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleLogout = () => {
+        if (user) {
+            try {
+                const identifier = user.email || user.uid;
+                localStorage.removeItem(`nano_${identifier}_profile_mode`);
+                localStorage.removeItem(`nano_${identifier}_profile_type_lock`);
+                localStorage.removeItem(`nano_${identifier}_general_flow_mode`);
+                localStorage.removeItem(`nano_${identifier}_restaurant_profile`);
+                localStorage.removeItem(`nano_${identifier}_restaurant_onboarding_step`);
+                localStorage.removeItem(`nano_${identifier}_onboarding_step`);
+                localStorage.removeItem(`nano_${identifier}_general_step`);
+                localStorage.removeItem(`nano_${identifier}_landing_otp_auth`);
+            } catch (e) {
+                console.error('Error clearing namespaced localStorage on logout:', e);
+            }
+            logout();
+        }
+        try {
+            localStorage.removeItem('landing_otp_auth');
+            localStorage.removeItem('onboarding_step');
+            localStorage.removeItem('general_step');
+            localStorage.removeItem('profile_mode');
+            localStorage.removeItem('profile_type_lock');
+            localStorage.removeItem('general_flow_mode');
+            localStorage.removeItem('restaurant_onboarding_step');
+            localStorage.removeItem('restaurant_profile');
+        } catch (e) {
+            console.error('Error clearing localStorage on logout:', e);
+        }
+        setMobileMenuOpen(false);
+        setAvatarMenuOpen(false);
+    };
+
+    const isLoggedIn = !!user;
+
+    const userInitial = user?.displayName
+        ? user.displayName.charAt(0).toUpperCase()
+        : user?.email
+            ? user.email.charAt(0).toUpperCase()
+            : 'U';
+
+    return (
+        <nav className="nano-navbar">
+            <div className="navbar-container">
+                <div className="navbar-left">
+                    <Link className="navbar-logo" to="/">
+                        <div className="logo-text">Nano Profiles</div>
+                    </Link>
+                </div>
+
+                <div className={`navbar-center ${mobileMenuOpen ? 'mobile-show' : ''}`}>
+                    <div className="nav-links-wrap">
+                        <Link
+                            to="/"
+                            className={`nav-link${isHomeActive ? ' nav-link--active' : ''}`}
+                            aria-current={isHomeActive ? 'page' : undefined}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            HOME
+                        </Link>
+                        <Link
+                            to="/artist-showcase"
+                            className={`nav-link${isArtistActive ? ' nav-link--active' : ''}`}
+                            aria-current={isArtistActive ? 'page' : undefined}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            ARTIST
+                        </Link>
+                        <Link
+                            to="/professional-showcase"
+                            className={`nav-link${isProfessionalActive ? ' nav-link--active' : ''}`}
+                            aria-current={isProfessionalActive ? 'page' : undefined}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            GENERAL
+                        </Link>
+                        <Link
+                            to="/restaurant-showcase"
+                            className={`nav-link${isRestaurantActive ? ' nav-link--active' : ''}`}
+                            aria-current={isRestaurantActive ? 'page' : undefined}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            RESTAURANT
+                        </Link>
+                        <Link
+                            to="/student-showcase"
+                            className={`nav-link${isStudentActive ? ' nav-link--active' : ''}`}
+                            aria-current={isStudentActive ? 'page' : undefined}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            STUDENT
+                        </Link>
+{/* <Link
+                            to="/resume"
+                            className={`nav-link${pathname === '/resume' ? ' nav-link--active' : ''}`}
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            RESUME
+                        </Link> */}
+                    </div>
+                </div>
+
+                <div className="navbar-right">
+                    <div className="nav-actions">
+                        {isLoggedIn ? (
+                            <div className="nav-user-area" ref={avatarMenuRef}>
+                                <button
+                                    type="button"
+                                    className="nav-avatar-circle"
+                                    onClick={() => setAvatarMenuOpen((v) => !v)}
+                                    aria-expanded={avatarMenuOpen}
+                                    aria-haspopup="true"
+                                    aria-label="Profile menu"
+                                >
+                                    {user?.photoURL ? (
+                                        <img src={user.photoURL} alt="" />
+                                    ) : (
+                                        <span>{userInitial}</span>
+                                    )}
+                                </button>
+                                {avatarMenuOpen && (
+                                    <div className="nav-dropdown" role="menu">
+                                        <button type="button" role="menuitem" onClick={() => { setAvatarMenuOpen(false); navigate('/profile'); }}>Dashboard</button>
+                                        <button type="button" role="menuitem" onClick={() => { setAvatarMenuOpen(false); handleLogout(); }}>Logout</button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <Link
+                                to="/login"
+                                className="nav-profile-signin"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Sign in
+                            </Link>
+                        )}
+                    </div>
+
+                    <button className={`nav-toggle ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+    );
+}
+
