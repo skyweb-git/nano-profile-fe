@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ShieldCheck, SmartphoneNfc, QrCode, Copy, Check, ExternalLink, AlertCircle } from 'lucide-react';
+import { SmartphoneNfc, ExternalLink, AlertCircle } from 'lucide-react';
 import { API_URL } from '../services/api';
 
 function buildLocalUpiLinks({ payeeUpiId, amount }) {
@@ -9,12 +9,7 @@ function buildLocalUpiLinks({ payeeUpiId, amount }) {
   const baseQuery = `pa=${upid}&am=${cleanAmount}&cu=INR`;
 
   return {
-    upiIntentUrl: `upi://pay?${baseQuery}`,
-    gpayUrl: `tez://upi/pay?${baseQuery}`,
-    phonepeUrl: `phonepe://pay?${baseQuery}`,
-    paytmUrl: `paytmmp://pay?${baseQuery}`,
-    bhimUrl: `upi://pay?${baseQuery}`,
-    qrPayload: `upi://pay?${baseQuery}`
+    upiIntentUrl: `upi://pay?${baseQuery}`
   };
 }
 
@@ -30,8 +25,6 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
       links: customData.links || buildLocalUpiLinks(customData)
     };
   });
-  const [copiedUpi, setCopiedUpi] = useState(false);
-  const [showQr, setShowQr] = useState(false);
 
   useEffect(() => {
     if (customData) {
@@ -79,13 +72,6 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
     };
   }, [tagCode, customData]);
 
-  const handleCopyUpi = () => {
-    if (!data?.payeeUpiId) return;
-    navigator.clipboard.writeText(data.payeeUpiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2000);
-  };
-
   const handlePayNow = (url) => {
     const targetUrl = url || data?.links?.upiIntentUrl;
     if (targetUrl) {
@@ -122,8 +108,6 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
     );
   }
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(data.links?.qrPayload || '')}`;
-
   return (
     <div style={styles.container}>
       {/* Background glow effects */}
@@ -131,31 +115,20 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
       <div style={styles.bgGlowBottom} />
 
       <main style={styles.card}>
-        {/* Header Tag / Verified Badge */}
-        <div style={styles.headerRow}>
-          <div style={styles.verifiedBadge}>
-            <ShieldCheck size={16} color="#10b981" />
-            <span>Verified Payee</span>
+        {/* Header Tag Pill */}
+        {data.tagCode && (
+          <div style={styles.headerRow}>
+            <div style={styles.tagPill}>
+              <SmartphoneNfc size={14} color="#6366f1" />
+              <span>{data.tagCode}</span>
+            </div>
           </div>
-          <div style={styles.tagPill}>
-            <SmartphoneNfc size={14} color="#6366f1" />
-            <span>{data.tagCode}</span>
-          </div>
-        </div>
+        )}
 
         {/* Payee Info */}
         <div style={styles.payeeSection}>
           <h1 style={styles.payeeName}>{data.payeeName}</h1>
           {data.title ? <p style={styles.tagTitle}>{data.title}</p> : null}
-
-          <div style={styles.upiRow} onClick={handleCopyUpi} title="Click to copy UPI ID">
-            <span style={styles.upiLabel}>UPI:</span>
-            <span style={styles.upiId}>{data.payeeUpiId}</span>
-            <button style={styles.copyBtn} aria-label="Copy UPI ID">
-              {copiedUpi ? <Check size={14} color="#10b981" /> : <Copy size={14} color="#94a3b8" />}
-            </button>
-          </div>
-          {copiedUpi && <span style={styles.copiedToast}>UPI ID copied to clipboard!</span>}
         </div>
 
         {/* Amount Display */}
@@ -177,67 +150,6 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
           <ExternalLink size={18} />
         </button>
 
-        {/* App Selector Pills */}
-        <div style={styles.appsSection}>
-          <p style={styles.appsSubtitle}>Or choose your preferred payment app:</p>
-          <div style={styles.appsGrid}>
-            <button
-              style={{ ...styles.appBtn, borderColor: '#5f259f' }}
-              onClick={() => handlePayNow(data.links?.phonepeUrl)}
-            >
-              <span style={{ color: '#8b5cf6', fontWeight: 600 }}>PhonePe</span>
-            </button>
-            <button
-              style={{ ...styles.appBtn, borderColor: '#4285F4' }}
-              onClick={() => handlePayNow(data.links?.gpayUrl)}
-            >
-              <span style={{ color: '#60a5fa', fontWeight: 600 }}>Google Pay</span>
-            </button>
-            <button
-              style={{ ...styles.appBtn, borderColor: '#00BAF2' }}
-              onClick={() => handlePayNow(data.links?.paytmUrl)}
-            >
-              <span style={{ color: '#38bdf8', fontWeight: 600 }}>Paytm</span>
-            </button>
-            <button
-              style={{ ...styles.appBtn, borderColor: '#22c55e' }}
-              onClick={() => handlePayNow(data.links?.bhimUrl)}
-            >
-              <span style={{ color: '#4ade80', fontWeight: 600 }}>BHIM / Any</span>
-            </button>
-          </div>
-        </div>
-
-        {/* QR Code toggle */}
-        <div style={styles.qrToggleSection}>
-          <button
-            style={styles.qrToggleBtn}
-            onClick={() => setShowQr(!showQr)}
-          >
-            <QrCode size={16} />
-            <span>{showQr ? 'Hide UPI QR Code' : 'Show UPI QR Code for Desktop/Scan'}</span>
-          </button>
-
-          {showQr && (
-            <div style={styles.qrContainer}>
-              <div style={styles.qrWrapper}>
-                <img
-                  src={qrImageUrl}
-                  alt={`UPI QR for ${data.payeeName}`}
-                  style={styles.qrImage}
-                />
-              </div>
-              <p style={styles.qrCaption}>Scan with Google Pay, PhonePe, Paytm, or BHIM</p>
-            </div>
-          )}
-        </div>
-
-        {/* Trust & Security Footer */}
-        <div style={styles.footerNote}>
-          <ShieldCheck size={14} color="#64748b" />
-          <span>NPCI Instant Bank Transfer • Zero Fee Tap-to-Pay</span>
-        </div>
-
         {typeof onBackToProfile === 'function' && (
           <button
             type="button"
@@ -248,7 +160,7 @@ export default function NfcPaymentView({ customData, onBackToProfile }) {
               color: '#94a3b8',
               fontSize: '13px',
               cursor: 'pointer',
-              marginTop: '1rem',
+              marginTop: '0.75rem',
               textDecoration: 'underline'
             }}
           >
@@ -294,7 +206,7 @@ const styles = {
   },
   card: {
     width: '100%',
-    maxWidth: '430px',
+    maxWidth: '380px',
     background: 'rgba(15, 23, 42, 0.85)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
@@ -310,21 +222,9 @@ const styles = {
   headerRow: {
     width: '100%',
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: '1.25rem'
-  },
-  verifiedBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    background: 'rgba(16, 185, 129, 0.12)',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    borderRadius: '20px',
-    padding: '4px 10px',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#34d399'
+    marginBottom: '1rem'
   },
   tagPill: {
     display: 'inline-flex',
@@ -333,7 +233,7 @@ const styles = {
     background: 'rgba(99, 102, 241, 0.12)',
     border: '1px solid rgba(99, 102, 241, 0.3)',
     borderRadius: '20px',
-    padding: '4px 10px',
+    padding: '4px 12px',
     fontSize: '12px',
     fontWeight: 700,
     color: '#a5b4fc',
@@ -354,43 +254,7 @@ const styles = {
   tagTitle: {
     fontSize: '0.875rem',
     color: '#94a3b8',
-    margin: '0 0 8px 0'
-  },
-  upiRow: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    background: 'rgba(30, 41, 59, 0.7)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '8px',
-    padding: '4px 10px',
-    cursor: 'pointer',
-    marginTop: '4px',
-    transition: 'background 0.2s'
-  },
-  upiLabel: {
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#64748b'
-  },
-  upiId: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#cbd5e1'
-  },
-  copyBtn: {
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer'
-  },
-  copiedToast: {
-    display: 'block',
-    fontSize: '11px',
-    color: '#10b981',
-    marginTop: '4px'
+    margin: '0'
   },
   amountCard: {
     width: '100%',
@@ -449,87 +313,7 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)',
-    transition: 'transform 0.15s, box-shadow 0.15s',
-    marginBottom: '1.5rem'
-  },
-  appsSection: {
-    width: '100%',
-    marginBottom: '1.25rem'
-  },
-  appsSubtitle: {
-    fontSize: '11px',
-    color: '#64748b',
-    textAlign: 'center',
-    margin: '0 0 8px 0',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-  },
-  appsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '8px'
-  },
-  appBtn: {
-    background: 'rgba(30, 41, 59, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '10px',
-    padding: '10px 12px',
-    fontSize: '13px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background 0.2s, transform 0.1s'
-  },
-  qrToggleSection: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: '1.25rem'
-  },
-  qrToggleBtn: {
-    background: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '10px',
-    color: '#94a3b8',
-    padding: '8px 14px',
-    fontSize: '12px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    cursor: 'pointer'
-  },
-  qrContainer: {
-    marginTop: '1rem',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
-  },
-  qrWrapper: {
-    background: '#ffffff',
-    padding: '12px',
-    borderRadius: '16px',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
-  },
-  qrImage: {
-    display: 'block',
-    width: '180px',
-    height: '180px'
-  },
-  qrCaption: {
-    fontSize: '11px',
-    color: '#64748b',
-    marginTop: '8px',
-    textAlign: 'center'
-  },
-  footerNote: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '11px',
-    color: '#64748b',
-    marginTop: '0.5rem'
+    transition: 'transform 0.15s, box-shadow 0.15s'
   },
   spinner: {
     width: '40px',
