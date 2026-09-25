@@ -10,19 +10,22 @@
 function resolveApiUrl() {
   const envUrl = process.env.REACT_APP_API_URL;
   if (envUrl) {
+    let url = envUrl.trim();
     // Safety guard: ensure the URL always starts with a protocol
-    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
-      return `https://${envUrl}`;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
     }
-    return envUrl;
+    // Clean up if the /health endpoint was passed directly
+    return url.replace(/\/health\/?$/, '').replace(/\/+$/, '');
   }
 
-  // Always use the current origin if running in a browser
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
+  // Local development fallback
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:5000';
   }
 
-  return '';
+  // Production backend default
+  return 'https://api.nanoprofiles.com';
 }
 export const API_URL = resolveApiUrl();
 
@@ -57,6 +60,15 @@ async function request(method, path, { body, getIdToken, getFirebaseUser, header
     throw new Error(errText);
   }
   return data;
+}
+
+export async function checkBackendHealth() {
+  try {
+    const res = await fetch(`${API_URL}/health`);
+    return await res.json();
+  } catch (err) {
+    return { status: 'error', error: err.message };
+  }
 }
 
 async function uploadPhoto(file, getIdToken) {

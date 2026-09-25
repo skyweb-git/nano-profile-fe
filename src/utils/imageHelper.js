@@ -31,10 +31,11 @@ export const fixImageUrl = (url) => {
   // Guard: ensure the base always has a protocol so it isn't treated as a relative URL
   if (trimmed.startsWith('/')) {
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    let base = process.env.REACT_APP_API_URL || (isLocal ? process.env.REACT_APP_LOCAL_API_URL : process.env.REACT_APP_PRODUCTION_API_URL) || (typeof window !== 'undefined' ? window.location.origin : "");
+    let base = process.env.REACT_APP_API_URL || (isLocal ? (process.env.REACT_APP_LOCAL_API_URL || 'http://localhost:5000') : (process.env.REACT_APP_PRODUCTION_API_URL || 'https://api.nanoprofiles.com')) || 'https://api.nanoprofiles.com';
     if (base && !base.startsWith('http://') && !base.startsWith('https://')) {
       base = `https://${base}`;
     }
+    base = base.replace(/\/health\/?$/, '').replace(/\/+$/, '');
     return `${base}${trimmed}`;
   }
 
