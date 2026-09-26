@@ -7,6 +7,7 @@ import ProfileChoiceScreen from '../components/profile/ProfileChoiceScreen';
 import ProfileArtistController from './ProfileArtistController';
 import ProfileGeneralController from './ProfileGeneralController';
 import ProfileRestaurantController from './ProfileRestaurantController';
+import ProfileFounderController from './ProfileFounderController';
 import {
   PROFILE_MODE_KEY,
   PROFILE_LOCK_KEY,
@@ -132,6 +133,17 @@ export default function Profile() {
     if (user?.email) setPrefByEmail(user.email, 'restaurant');
   }, [profileLock, user]);
 
+  const handleSelectFounderMode = useCallback(() => {
+    setProfileMode('founder');
+    setChoiceSource('manual');
+    if (!profileLock) {
+      setProfileLock('founder');
+      setStoredValue(user, PROFILE_LOCK_KEY, 'founder');
+    }
+    setStoredValue(user, PROFILE_MODE_KEY, 'founder');
+    if (user?.email) setPrefByEmail(user.email, 'founder');
+  }, [profileLock, user]);
+
   const handleLogout = async () => {
     try {
       if (user?.email) {
@@ -145,6 +157,7 @@ export default function Profile() {
         localStorage.removeItem(RESTAURANT_ONBOARDING_KEY);
         localStorage.removeItem('onboarding_step');
         localStorage.removeItem('general_step');
+        localStorage.removeItem('founder_step');
         localStorage.removeItem('landing_otp_auth');
 
         removeStoredValue(user, PROFILE_LOCK_KEY);
@@ -154,6 +167,7 @@ export default function Profile() {
         removeStoredValue(user, RESTAURANT_ONBOARDING_KEY);
         removeStoredValue(user, 'onboarding_step');
         removeStoredValue(user, 'general_step');
+        removeStoredValue(user, 'founder_step');
         removeStoredValue(user, 'landing_otp_auth');
       } catch (e) {
         console.error('Error clearing localStorage on logout:', e);
@@ -192,6 +206,13 @@ export default function Profile() {
     setGeneralProfileLoading(true);
     try {
       if (profileMode === 'choice') {
+        // Check founder first
+        const resFounder = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, 'founder');
+        if (resFounder?.data) {
+          setGeneralProfile(resFounder.data);
+          return;
+        }
+
         const resRestaurant = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, 'restaurant');
         if (resRestaurant?.data) {
           setGeneralProfile(resRestaurant.data);
@@ -205,7 +226,7 @@ export default function Profile() {
           return;
         }
       } else {
-        const requestedType = profileMode === 'restaurant' ? 'restaurant' : 'general';
+        const requestedType = profileMode === 'restaurant' ? 'restaurant' : profileMode === 'founder' ? 'founder' : 'general';
         const res = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, requestedType);
         if (res?.data) {
           setGeneralProfile(res.data);
@@ -248,7 +269,14 @@ export default function Profile() {
       return;
     }
 
-    if (lock) {
+    if (lock === 'founder') {
+        setProfileLock('founder');
+        setProfileMode('founder');
+        setChoiceSource('automatic');
+        return;
+      }
+
+      if (lock) {
       setProfileLock(lock);
       if (lock === 'artist') setProfileMode('artist');
       else if (lock === 'general_restaurant') {
@@ -317,6 +345,10 @@ export default function Profile() {
         handleSelectArtistMode();
         return;
       }
+      if (lock === 'founder') {
+        handleSelectFounderMode();
+        return;
+      }
       if (lock === 'general_restaurant') {
         const preferredGeneralMode = getStoredValue(user, GENERAL_FLOW_MODE_KEY) || 'general';
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
@@ -335,7 +367,10 @@ export default function Profile() {
 
       if (!lock && hasGeneral) {
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
-        if (likelyRestaurant) {
+        const likelyFounder = generalProfile?.profileType === 'founder';
+        if (likelyFounder) {
+          handleSelectFounderMode();
+        } else if (likelyRestaurant) {
           handleSelectRestaurantMode();
         } else {
           handleSelectGeneralMode();
@@ -347,14 +382,17 @@ export default function Profile() {
         handleSelectArtistMode();
       } else if (hasGeneral && !hasSetupArtist) {
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
-        if (likelyRestaurant) {
+        const likelyFounder = generalProfile?.profileType === 'founder';
+        if (likelyFounder) {
+          handleSelectFounderMode();
+        } else if (likelyRestaurant) {
           handleSelectRestaurantMode();
         } else {
           handleSelectGeneralMode();
         }
       }
     }
-  }, [artistsLoading, generalProfileLoading, myArtists, generalProfile, restaurantProfile, profileLock, profileMode, user, handleSelectArtistMode, handleSelectGeneralMode, handleSelectRestaurantMode]);
+  }, [artistsLoading, generalProfileLoading, myArtists, generalProfile, restaurantProfile, profileLock, profileMode, user, handleSelectArtistMode, handleSelectGeneralMode, handleSelectRestaurantMode, handleSelectFounderMode]);
 
   const displayName = user?.displayName || user?.email || 'Profile';
   const displayEmail = user?.email || '';
@@ -493,6 +531,7 @@ export default function Profile() {
         handleSelectArtistMode={handleSelectArtistMode}
         handleSelectGeneralMode={handleSelectGeneralMode}
         handleSelectRestaurantMode={handleSelectRestaurantMode}
+        handleSelectFounderMode={handleSelectFounderMode}
       />
     );
   }
@@ -516,6 +555,9 @@ export default function Profile() {
     }
     if (profileMode === 'restaurant') {
       return <ProfileRestaurantController {...controllerProps} />;
+    }
+    if (profileMode === 'founder') {
+      return <ProfileFounderController {...controllerProps} />;
     }
   }
 

@@ -119,7 +119,7 @@ export const generalProfileAPI = {
   update: (body, getIdToken, getFirebaseUser) =>
     request('PUT', '/api/general-profile/me', { body, getIdToken, getFirebaseUser }),
   getByUsername: (username) =>
-    request('GET', `/api/general-profile/u/${encodeURIComponent(username)}`, { cache: 'no-store' }),
+    request('GET', `/api/general-profile/u/${encodeURIComponent(username)}?_t=${Date.now()}`, { cache: 'no-store' }),
   checkAvailability: ({ username, email, excludeId }) => {
     const params = new URLSearchParams();
     if (username) params.append('username', username);

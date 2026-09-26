@@ -46,6 +46,16 @@ function App() {
               <GeneralProfileView />
             </Suspense>
           } />
+          <Route path="/founder/:username" element={
+            <Suspense fallback={<ShowcaseSkeleton type="public-general" />}>
+              <GeneralProfileView />
+            </Suspense>
+          } />
+          <Route path="/restaurant/:username" element={
+            <Suspense fallback={<ShowcaseSkeleton type="public-general" />}>
+              <GeneralProfileView />
+            </Suspense>
+          } />
           <Route path="/artist/:artistId" element={
             <Suspense fallback={<ShowcaseSkeleton type="public-artist" />}>
               <ArtistPublicView />

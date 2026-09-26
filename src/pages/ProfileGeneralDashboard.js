@@ -50,7 +50,8 @@ export default function ProfileGeneralDashboard(props) {
 
     // username popup props
     showUsernamePopup, handleCreateProfileWithUsername,
-    setProfileMode, setProfileLock, setChoiceSource
+    setProfileMode, setProfileLock, setChoiceSource,
+    dashboardTitle
   } = props;
 
   const iframeRef = useRef(null);
@@ -126,6 +127,13 @@ export default function ProfileGeneralDashboard(props) {
       return [];
     }
   });
+
+  const isFounder = dashboardTitle === 'Founder Profile' || artist?.profileType === 'founder';
+  const [newMilestoneText, setNewMilestoneText] = useState('');
+  const [newMemberUsername, setNewMemberUsername] = useState('');
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [memberFetchMsg, setMemberFetchMsg] = useState('');
+  const [isUploadingDeck, setIsUploadingDeck] = useState(false);
 
   // Lock page scroll when platform selector modal is open (style-tag injection is stronger than JS style property)
   useEffect(() => {
@@ -282,6 +290,24 @@ export default function ProfileGeneralDashboard(props) {
       try {
         const cleanData = JSON.parse(JSON.stringify({
           ...artist,
+          profileType: isFounder ? 'founder' : (artist?.profileType || 'general'),
+          companyName: heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || ''),
+          companyWebsite: heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || ''),
+          foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
+          companyDescription: heroUpdates.companyDescription !== undefined ? heroUpdates.companyDescription : (artist?.companyDescription || ''),
+          companyImage: heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || ''),
+          fundingStage: '',
+          teamSize: '',
+          pitchDeckPdf: '',
+          ctaLabel: '',
+          ctaUrl: '',
+          milestones: heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []),
+          coFounders: heroUpdates.coFounders !== undefined ? heroUpdates.coFounders : (artist?.coFounders || []),
+          showCompany: heroUpdates.showCompany !== undefined ? heroUpdates.showCompany : (artist?.showCompany !== false),
+          showPitchDeck: false,
+          showCoFounders: heroUpdates.showCoFounders !== undefined ? heroUpdates.showCoFounders : (artist?.showCoFounders !== false),
+          showMilestones: heroUpdates.showMilestones !== undefined ? heroUpdates.showMilestones : (artist?.showMilestones !== false),
+          showCta: false,
           name: heroUpdates.name !== undefined ? heroUpdates.name : (artist?.name || ''),
           city: heroUpdates.city !== undefined ? heroUpdates.city : (artist?.city || ''),
           state: heroUpdates.state !== undefined ? heroUpdates.state : (artist?.state || ''),
@@ -297,7 +323,7 @@ export default function ProfileGeneralDashboard(props) {
         console.warn('Artist draft sync serialization warning:', err);
       }
     }
-  }, [heroUpdates, artist, previewKey]);
+  }, [heroUpdates, artist, previewKey, isFounder]);
 
   // Helper editor header with integrated toggle switch
   const renderEditorHeader = (title, fieldName, actionBtn = null) => {
@@ -889,277 +915,6 @@ export default function ProfileGeneralDashboard(props) {
     </div>
   );
 
-  const renderPaymentEditor = () => {
-    const currentActive = heroUpdates.paymentActive !== undefined ? heroUpdates.paymentActive : Boolean(artist?.paymentActive);
-    const currentUpi = heroUpdates.upiId !== undefined ? heroUpdates.upiId : (artist?.upiId || '');
-    const currentAmount = heroUpdates.paymentAmount !== undefined ? heroUpdates.paymentAmount : (artist?.paymentAmount !== undefined && artist?.paymentAmount !== null ? String(artist.paymentAmount) : '250');
-    const currentPayee = heroUpdates.paymentPayeeName !== undefined ? heroUpdates.paymentPayeeName : (artist?.paymentPayeeName || artist?.name || '');
-    const currentNote = heroUpdates.paymentNote !== undefined ? heroUpdates.paymentNote : (artist?.paymentNote || '');
-
-    const handleSavePayment = async () => {
-      if (currentActive && !currentUpi.trim()) {
-        window.alert('Please enter your Payee UPI ID (e.g. yourname@bank) before turning on Tap-to-Pay.');
-        return;
-      }
-      if (currentActive && (!currentAmount || Number(currentAmount) <= 0)) {
-        window.alert('Please enter a valid payment amount greater than ₹0.');
-        return;
-      }
-
-      const numAmount = Number(currentAmount) || 0;
-      const payload = {
-        paymentActive: currentActive,
-        upiId: currentUpi.trim(),
-        paymentAmount: numAmount,
-        paymentPayeeName: currentPayee.trim(),
-        paymentNote: currentNote.trim()
-      };
-
-      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, ...payload } : a));
-      await handleUpdateHeroField('paymentActive', currentActive, payload);
-      setHeroUpdates({});
-      setActiveEditor('default');
-    };
-
-    return (
-      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-          <div>
-            <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>NFC Tap-to-Pay Mode</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              Turn your NFC card into an instant UPI payment terminal or keep it as your digital profile.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveEditor('default')}
-            style={{
-              background: '#f1f5f9',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '0.85rem',
-              color: '#475569',
-              cursor: 'pointer',
-              fontWeight: 600
-            }}
-          >
-            ← Back
-          </button>
-        </div>
-
-        {/* Master Active / Inactive Toggle Banner */}
-        <div style={{
-          background: currentActive ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.12) 100%)' : '#ffffff',
-          border: currentActive ? '2px solid #10b981' : '1px solid #cbd5e1',
-          borderRadius: '14px',
-          padding: '1.25rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: currentActive ? '0 4px 12px rgba(16, 185, 129, 0.1)' : 'none'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                display: 'inline-block',
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: currentActive ? '#10b981' : '#94a3b8'
-              }} />
-              <strong style={{ fontSize: '1.05rem', color: currentActive ? '#065f46' : '#0f172a' }}>
-                {currentActive ? "Payment Mode is ACTIVE" : "Payment Mode is OFF (Profile Mode)"}
-              </strong>
-            </div>
-            <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: '#475569', lineHeight: 1.4, maxWidth: '420px' }}>
-              {currentActive
-                ? `⚡ When anyone taps your physical NFC card, it will immediately open the payment screen for ₹${currentAmount || 0}. Your profile will be bypassed.`
-                : "○ When anyone taps your physical NFC card, your normal Digital Profile & Bio will display automatically."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setHeroUpdates(prev => ({ ...prev, paymentActive: !currentActive }))}
-            style={{
-              background: currentActive ? '#10b981' : '#cbd5e1',
-              border: 'none',
-              borderRadius: '24px',
-              width: '58px',
-              height: '32px',
-              padding: '3px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              transition: 'background 0.2s',
-              justifyContent: currentActive ? 'flex-end' : 'flex-start',
-              flexShrink: 0
-            }}
-            title={currentActive ? "Click to deactivate payments" : "Click to activate payments"}
-          >
-            <div style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '50%',
-              background: '#ffffff',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.25)'
-            }} />
-          </button>
-        </div>
-
-        {/* Inputs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* UPI ID */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Payee UPI ID <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              type="text"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
-              value={currentUpi}
-              onChange={(e) => setHeroUpdates(prev => ({ ...prev, upiId: e.target.value }))}
-              placeholder="e.g. vamshi@okaxis, yourname@icici, mobile@paytm"
-            />
-            <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-              Payments from Google Pay, PhonePe, and Paytm will be deposited directly to this UPI account.
-            </span>
-          </div>
-
-          {/* Payee Name */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Payee Display Name
-            </label>
-            <input
-              type="text"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
-              value={currentPayee}
-              onChange={(e) => setHeroUpdates(prev => ({ ...prev, paymentPayeeName: e.target.value }))}
-              placeholder="e.g. Tudigonda Vamshi, Studio Artube"
-            />
-          </div>
-
-          {/* Amount */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Payment Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.25rem', fontWeight: 800, color: '#10b981', pointerEvents: 'none' }}>₹</span>
-              <input
-                type="number"
-                min="1"
-                step="any"
-                style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '1.3rem', fontWeight: 800, outline: 'none' }}
-                value={currentAmount}
-                onChange={(e) => setHeroUpdates(prev => ({ ...prev, paymentAmount: e.target.value }))}
-                placeholder="250"
-              />
-            </div>
-
-            {/* Quick Adjustment Chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-              {["100", "250", "500", "1000", "2000"].map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => setHeroUpdates(prev => ({ ...prev, paymentAmount: preset }))}
-                  style={{
-                    background: currentAmount === preset ? '#2563eb' : '#f1f5f9',
-                    color: currentAmount === preset ? '#ffffff' : '#334155',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '16px',
-                    padding: '4px 10px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  ₹{preset}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  const cur = Number(currentAmount) || 0;
-                  setHeroUpdates(prev => ({ ...prev, paymentAmount: String(cur + 50) }));
-                }}
-                style={{ background: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                +₹50
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const cur = Number(currentAmount) || 0;
-                  setHeroUpdates(prev => ({ ...prev, paymentAmount: String(cur + 100) }));
-                }}
-                style={{ background: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe', borderRadius: '16px', padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                +₹100
-              </button>
-            </div>
-          </div>
-
-          {/* Payment Note */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Payment Purpose / Note (Optional)
-            </label>
-            <input
-              type="text"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
-              value={currentNote}
-              onChange={(e) => setHeroUpdates(prev => ({ ...prev, paymentNote: e.target.value }))}
-              placeholder="e.g. Art & Design Consultation"
-            />
-          </div>
-
-          {/* Save / Cancel buttons */}
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button
-              type="button"
-              onClick={handleSavePayment}
-              style={{
-                flex: 1,
-                padding: '0.9rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: currentActive ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : '#2563eb',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-              }}
-            >
-              {currentActive ? "Save & Activate Tap-to-Pay" : "Save Changes"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
-              style={{
-                flex: '0 0 100px',
-                padding: '0.9rem',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                background: 'transparent',
-                color: '#475569',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderStatusBadge = (fieldName) => {
     if (!artist) return null;
     const isVisible = artist[fieldName] !== false;
@@ -1186,6 +941,647 @@ export default function ProfileGeneralDashboard(props) {
         }} />
         {isVisible ? 'Visible' : 'Hidden'}
       </span>
+    );
+  };
+
+  const renderCompanyEditor = () => {
+    const compName = heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || '');
+    const compWeb = heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || '');
+    const foundYr = heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || '');
+    const compDesc = heroUpdates.companyDescription !== undefined ? heroUpdates.companyDescription : (artist?.companyDescription || '');
+    const compImg = heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || '');
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Company & Venture", "showCompany")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+          {/* Company Image / Banner */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Company Image / Banner</label>
+            {compImg && (
+              <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', marginBottom: '0.75rem', border: '1px solid #cbd5e1' }}>
+                <img src={compImg} alt="Company Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroUpdates(prev => ({ ...prev, companyImage: '' }));
+                    setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, companyImage: '' } : a));
+                    handleUpdateHeroField('companyImage', '');
+                  }}
+                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.65)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }}
+                  title="Remove Image"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <label style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: isUploading === 'companyImage' ? 'not-allowed' : 'pointer',
+              opacity: isUploading === 'companyImage' ? 0.7 : 1
+            }}>
+              {isUploading === 'companyImage' ? 'Uploading Image...' : (compImg ? 'Change Company Image' : '+ Upload Company Image')}
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                disabled={isUploading === 'companyImage'}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (handlePickAndCrop) {
+                    handlePickAndCrop(e, 16 / 9, async (croppedFile) => {
+                      if (handleUploadField) {
+                        await handleUploadField('companyImage', croppedFile);
+                      }
+                    });
+                  } else if (handleUploadField) {
+                    handleUploadField('companyImage', file);
+                  }
+                }}
+              />
+            </label>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Startup / Company Name</label>
+            <input
+              type="text"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={compName}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, companyName: e.target.value }))}
+              placeholder="e.g. Nexus Tech Labs"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Company Website</label>
+            <input
+              type="url"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={compWeb}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, companyWebsite: e.target.value }))}
+              placeholder="https://yourcompany.com"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Founding Year</label>
+            <input
+              type="text"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={foundYr}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, foundingYear: e.target.value }))}
+              placeholder="e.g. 2023"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Company Description</label>
+            <textarea
+              rows={5}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none', resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
+              value={compDesc}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, companyDescription: e.target.value }))}
+              placeholder="Write a proper description of your company, products, vision, mission, and achievements..."
+            />
+          </div>
+
+          {renderMobileToggle("showCompany")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              onClick={() => {
+                const payload = {
+                  companyWebsite: compWeb,
+                  foundingYear: foundYr,
+                  companyDescription: compDesc,
+                  companyImage: compImg,
+                  fundingStage: '',
+                  teamSize: '',
+                  showCompany: artist?.showCompany !== false
+                };
+                setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, companyName: compName, ...payload } : a));
+                handleUpdateHeroField('companyName', compName, payload).then(() => {
+                  setActiveEditor('default');
+                });
+              }}
+              style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Save Company Info
+            </button>
+            <button
+              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDeckEditor = () => {
+    const deckUrl = heroUpdates.pitchDeckPdf !== undefined ? heroUpdates.pitchDeckPdf : (artist?.pitchDeckPdf || '');
+
+    const handlePdfFileSelect = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsUploadingDeck(true);
+      try {
+        const res = await generalProfileAPI.uploadMenuPdf(file, () => getIdToken(), getFirebaseUser);
+        if (res && res.url) {
+          setHeroUpdates(prev => ({ ...prev, pitchDeckPdf: res.url }));
+          setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, pitchDeckPdf: res.url } : a));
+          await handleUpdateHeroField('pitchDeckPdf', res.url);
+        }
+      } catch (err) {
+        console.error('Failed to upload PDF deck:', err);
+        alert(err.message || 'Failed to upload PDF. You can also paste a Google Drive/DocSend link below.');
+      } finally {
+        setIsUploadingDeck(false);
+      }
+    };
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Pitch Deck", "showPitchDeck")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+              Upload Pitch Deck PDF
+            </label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <label style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '8px',
+                border: '1.5px dashed #cbd5e1',
+                background: '#ffffff',
+                color: '#2563eb',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                cursor: isUploadingDeck ? 'wait' : 'pointer'
+              }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {isUploadingDeck ? 'Uploading PDF...' : 'Choose PDF File'}
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfFileSelect}
+                  disabled={isUploadingDeck}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {deckUrl && (
+                <a href={deckUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', color: '#2563eb', textDecoration: 'underline', fontWeight: 600 }}>
+                  View Current Deck ↗
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+              Or Link to Google Drive / DocSend / Notion
+            </label>
+            <input
+              type="url"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={deckUrl}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, pitchDeckPdf: e.target.value }))}
+              placeholder="https://docsend.com/view/... or https://drive.google.com/..."
+            />
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+              Investors will see a high-contrast button labeled "View Pitch Deck" directly on your profile.
+            </span>
+          </div>
+
+          {renderMobileToggle("showPitchDeck")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              onClick={() => {
+                setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, pitchDeckPdf: deckUrl } : a));
+                handleUpdateHeroField('pitchDeckPdf', deckUrl).then(() => {
+                  setActiveEditor('default');
+                });
+              }}
+              style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Save Pitch Deck
+            </button>
+            <button
+              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCtaEditor = () => {
+    const ctaLabel = heroUpdates.ctaLabel !== undefined ? heroUpdates.ctaLabel : (artist?.ctaLabel || 'Book a Call');
+    const ctaUrl = heroUpdates.ctaUrl !== undefined ? heroUpdates.ctaUrl : (artist?.ctaUrl || '');
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Investor CTA", "showCta")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Button Text / Label</label>
+            <input
+              type="text"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={ctaLabel}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, ctaLabel: e.target.value }))}
+              placeholder="e.g. Book a Call, Invest in Us, Chat with Founder"
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Meeting / Destination URL</label>
+            <input
+              type="url"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+              value={ctaUrl}
+              onChange={(e) => setHeroUpdates(prev => ({ ...prev, ctaUrl: e.target.value }))}
+              placeholder="https://calendly.com/your-name or https://cal.com/..."
+            />
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+              Rendered as a prominent crimson call-to-action button for investors and partners.
+            </span>
+          </div>
+
+          {renderMobileToggle("showCta")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              onClick={() => {
+                setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, ctaLabel, ctaUrl } : a));
+                handleUpdateHeroField('ctaLabel', ctaLabel, { ctaUrl }).then(() => {
+                  setActiveEditor('default');
+                });
+              }}
+              style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Save CTA Button
+            </button>
+            <button
+              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMilestonesEditor = () => {
+    const rawMilestones = heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []);
+    const milestones = Array.isArray(rawMilestones) ? rawMilestones : [];
+
+    const handleAddMilestone = () => {
+      const text = newMilestoneText.trim();
+      if (!text) return;
+      const updated = [...milestones, { label: text }];
+      setHeroUpdates(prev => ({ ...prev, milestones: updated }));
+      setNewMilestoneText('');
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+    };
+
+    const handleRemoveMilestone = (idxToRemove) => {
+      const updated = milestones.filter((_, i) => i !== idxToRemove);
+      setHeroUpdates(prev => ({ ...prev, milestones: updated }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+    };
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Traction & Milestones", "showMilestones")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Add Milestone / Achievement</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                style={{ flex: 1, boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none' }}
+                value={newMilestoneText}
+                onChange={(e) => setNewMilestoneText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddMilestone(); } }}
+                placeholder="e.g. $1.2M Seed Raised, 50K+ Users, YC W24"
+              />
+              <button
+                onClick={handleAddMilestone}
+                style={{ padding: '0.8rem 1.25rem', borderRadius: '8px', border: 'none', background: '#0f172a', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Current Milestones ({milestones.length})</label>
+            {milestones.length === 0 ? (
+              <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
+                No milestones added yet. Add key traction metrics above.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {milestones.map((m, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#0f172a' }}>{m.label}</span>
+                    <button
+                      onClick={() => handleRemoveMilestone(idx)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', fontSize: '1rem', lineHeight: 1 }}
+                      title="Delete milestone"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {renderMobileToggle("showMilestones")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              onClick={() => {
+                handleUpdateHeroField('milestones', milestones).then(() => {
+                  setActiveEditor('default');
+                });
+              }}
+              style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Save Milestones
+            </button>
+            <button
+              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTeamEditor = () => {
+    const rawCoFounders = heroUpdates.coFounders !== undefined ? heroUpdates.coFounders : (artist?.coFounders || []);
+    const coFounders = Array.isArray(rawCoFounders) ? rawCoFounders : [];
+
+    const handleAddMember = async () => {
+      let raw = newMemberUsername.trim();
+      if (!raw) return;
+
+      const linkMatch = raw.match(/\/link\/([a-zA-Z0-9_.-]+)/i);
+      let cleanNano = linkMatch && linkMatch[1] ? linkMatch[1] : raw.replace(/^@+/, '').trim();
+      if (!cleanNano) return;
+
+      setIsAddingMember(true);
+      setMemberFetchMsg(`Fetching profile @${cleanNano}...`);
+
+      let fetchedName = '';
+      let fetchedRole = '';
+      let fetchedPhoto = '';
+
+      try {
+        const res = await generalProfileAPI.getByUsername(cleanNano);
+        if (res && res.data) {
+          fetchedName = (res.data.name || '').replace(/\|/g, ' ').trim();
+          fetchedRole = res.data.title || res.data.experience || (res.data.profileType === 'founder' ? 'Founder' : 'Team Member');
+          fetchedPhoto = res.data.photo || '';
+        }
+      } catch (err) {
+        console.warn('Could not fetch Nano profile by username:', cleanNano, err);
+      } finally {
+        setIsAddingMember(false);
+        setMemberFetchMsg('');
+      }
+
+      if (!fetchedName) fetchedName = `@${cleanNano}`;
+      if (!fetchedRole) fetchedRole = 'Team Member';
+
+      const updated = [...coFounders, {
+        name: fetchedName,
+        role: fetchedRole,
+        photo: fetchedPhoto,
+        nanoUsername: cleanNano,
+        username: cleanNano
+      }];
+      setHeroUpdates(prev => ({ ...prev, coFounders: updated }));
+      setNewMemberUsername('');
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, coFounders: updated } : a));
+    };
+
+    const handleRemoveMember = (idxToRemove) => {
+      const updated = coFounders.filter((_, i) => i !== idxToRemove);
+      setHeroUpdates(prev => ({ ...prev, coFounders: updated }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, coFounders: updated } : a));
+    };
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Leadership & Team", "showCoFounders")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Add Team Member</h5>
+            <p style={{ margin: '0 0 0.85rem 0', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.4 }}>
+              Enter the Nano username of your team member. Their profile name, role, and avatar will be added automatically.
+            </p>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', width: '100%', margin: 0 }}>
+              <div style={{ display: 'flex', flex: 1, minWidth: 0, height: '44px', alignItems: 'center', margin: 0, boxSizing: 'border-box' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 0.9rem',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRight: 'none',
+                  borderRadius: '8px 0 0 8px',
+                  color: '#64748b',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  userSelect: 'none',
+                  boxSizing: 'border-box',
+                  height: '44px',
+                  margin: 0
+                }}>
+                  @
+                </span>
+                <input
+                  type="text"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    height: '44px',
+                    boxSizing: 'border-box',
+                    padding: '0 0.9rem',
+                    borderRadius: '0 8px 8px 0',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    background: '#ffffff',
+                    margin: 0
+                  }}
+                  value={newMemberUsername}
+                  onChange={(e) => setNewMemberUsername(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddMember();
+                    }
+                  }}
+                  placeholder="Enter Nano username (e.g. priya)"
+                  disabled={isAddingMember}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddMember}
+                disabled={isAddingMember || !newMemberUsername.trim()}
+                style={{
+                  height: '44px',
+                  maxHeight: '44px',
+                  margin: 0,
+                  marginTop: 0,
+                  marginBottom: 0,
+                  padding: '0 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isAddingMember || !newMemberUsername.trim() ? '#94a3b8' : '#0f172a',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: isAddingMember || !newMemberUsername.trim() ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  boxSizing: 'border-box',
+                  flexShrink: 0,
+                  alignSelf: 'center'
+                }}
+              >
+                {isAddingMember ? 'Fetching...' : 'Add Member'}
+              </button>
+            </div>
+            {memberFetchMsg && (
+              <div style={{ fontSize: '0.78rem', color: '#2563eb', marginTop: '6px', fontWeight: 500 }}>
+                {memberFetchMsg}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Current Team ({coFounders.length})</label>
+            {coFounders.length === 0 ? (
+              <div style={{ padding: '1.25rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
+                No team members added yet. Add member usernames above.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {coFounders.map((cf, idx) => {
+                  const uname = (cf.nanoUsername || cf.username || '').replace(/^@+/, '');
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                          border: '1px solid #bfdbfe'
+                        }}>
+                          {cf.photo ? (
+                            <img src={cf.photo} alt={cf.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            (cf.name || uname || 'T').charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>
+                            {cf.name || `@${uname}`}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            {cf.role || 'Team Member'}
+                          </div>
+                          {uname && (
+                            <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600, marginTop: '2px' }}>
+                              @{uname}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveMember(idx)}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', fontSize: '1.1rem', lineHeight: 1 }}
+                        title="Remove member"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {renderMobileToggle("showCoFounders")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <button
+              onClick={() => {
+                handleUpdateHeroField('coFounders', coFounders).then(() => {
+                  setActiveEditor('default');
+                });
+              }}
+              style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Save Team
+            </button>
+            <button
+              onClick={() => { setHeroUpdates({}); setActiveEditor('default'); }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -1263,6 +1659,21 @@ export default function ProfileGeneralDashboard(props) {
         </p>
       </div>
 
+      {isFounder && (
+        <div>
+          <h4 style={{ color: '#C8001A', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem 0', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            Founder &amp; Venture Controls
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+            {renderQuickAccessButton('company', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>, "Company & Venture", "showCompany", "Startup name, website, and founding year")}
+            
+            {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, "Traction & Milestones", "showMilestones", "Key achievements, funds raised, and user growth badges")}
+            
+            {renderQuickAccessButton('team', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, "Leadership & Team", "showCoFounders", "Co-founders and team member Nano profiles")}
+          </div>
+        </div>
+      )}
+
       <div>
         <h4 style={{ color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem 0' }}>Quick Access Settings</h4>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
@@ -1280,69 +1691,9 @@ export default function ProfileGeneralDashboard(props) {
           
 
           
-          {renderQuickAccessButton('what-i-do', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, "What I Do", "showWhatIDo", "List your custom services and offerings")}
+          {renderQuickAccessButton('what-i-do', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, isFounder ? "Ventures & Products" : "What I Do", "showWhatIDo", isFounder ? "List your startup products, platforms, and services" : "List your custom services and offerings")}
 
-          {/* NFC Tap-to-Pay Quick Access Button */}
-          <button
-            onClick={() => setActiveEditor('payment')}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: '0.4rem',
-              padding: '1rem',
-              borderRadius: '12px',
-              border: artist?.paymentActive ? '1.5px solid #10b981' : '1px solid #e2e8f0',
-              background: artist?.paymentActive ? 'rgba(16, 185, 129, 0.04)' : '#ffffff',
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-              width: '100%',
-              boxSizing: 'border-box'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = artist?.paymentActive ? '#10b981' : '#2563eb';
-              e.currentTarget.style.background = '#f8fafc';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = artist?.paymentActive ? '#10b981' : '#e2e8f0';
-              e.currentTarget.style.background = artist?.paymentActive ? 'rgba(16, 185, 129, 0.04)' : '#ffffff';
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '0.5rem' }}>
-              <div style={{ color: artist?.paymentActive ? '#10b981' : '#6366f1', display: 'flex', alignItems: 'center' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2" />
-                  <line x1="2" y1="10" x2="22" y2="10" />
-                </svg>
-              </div>
-              <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
-                NFC Tap-to-Pay
-              </span>
-              <span style={{
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '100px',
-                background: artist?.paymentActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.08)',
-                color: artist?.paymentActive ? '#059669' : '#64748b',
-                border: '1px solid ' + (artist?.paymentActive ? 'rgba(16, 185, 129, 0.3)' : 'rgba(100, 116, 139, 0.15)'),
-                marginLeft: 'auto',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                lineHeight: 1
-              }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: artist?.paymentActive ? '#10b981' : '#94a3b8' }} />
-                {artist?.paymentActive ? `Active (₹${artist.paymentAmount || 0})` : 'Inactive'}
-              </span>
-            </div>
-            <div style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: 1.4 }}>
-              {artist?.paymentActive
-                ? `Taps open UPI link for ₹${artist.paymentAmount || 0} directly`
-                : 'Turn your NFC card into a tap-to-pay UPI terminal'}
-            </div>
-          </button>
+
         </div>
       </div>
     </div>
@@ -1362,13 +1713,17 @@ export default function ProfileGeneralDashboard(props) {
         return renderAboutEditor();
       case 'platforms':
         return renderPlatformsEditor();
+      case 'company':
+        return renderCompanyEditor();
+      case 'milestones':
+        return renderMilestonesEditor();
+      case 'team':
+        return renderTeamEditor();
 
       case 'design':
         return null;
       case 'what-i-do':
         return renderWhatIDoEditor();
-      case 'payment':
-        return renderPaymentEditor();
       default:
         return renderDefaultPanel();
     }
@@ -1401,7 +1756,7 @@ export default function ProfileGeneralDashboard(props) {
           boxSizing: 'border-box'
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>General Editor</h1>
+            <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>{dashboardTitle ? `${dashboardTitle} Editor` : 'General Editor'}</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {myArtists && myArtists[0] && (() => {
@@ -1511,7 +1866,7 @@ export default function ProfileGeneralDashboard(props) {
               key={previewKey}
               onLoad={handleIframeLoad}
               title="General Profile Preview"
-              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1`}
+              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1${isFounder ? '&profileType=founder' : ''}`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             />
           ) : null}
@@ -2043,7 +2398,7 @@ export default function ProfileGeneralDashboard(props) {
         flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>General Profile</h1>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>{dashboardTitle || 'General Profile'}</h1>
           <span style={{ fontSize: '0.92rem', color: '#64748b', fontWeight: 500 }}>({displayEmail})</span>
         </div>
 
@@ -2142,7 +2497,7 @@ export default function ProfileGeneralDashboard(props) {
               key={previewKey}
               onLoad={handleIframeLoad}
               title="General Profile Preview"
-              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1`}
+              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1${isFounder ? '&profileType=founder' : ''}`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             />
           ) : (

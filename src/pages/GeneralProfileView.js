@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { generalProfileAPI } from '../services/api';
@@ -7,7 +7,6 @@ import { getLinkIcon } from '../components/LinkIcons';
 import { getThemeById, resolveFontFamily } from '../constants/generalThemes';
 import { Helmet } from 'react-helmet-async';
 import './GeneralProfileView.css';
-import NfcPaymentView from './NfcPaymentView';
 
 import { useShowcaseEmbedHeight } from '../hooks/useShowcaseEmbedHeight';
 
@@ -101,8 +100,131 @@ function GeneralProfileView() {
   const [themeOverride, setThemeOverride] = useState(null);
   const [showProfileFallback, setShowProfileFallback] = useState(false);
   const [success, setSuccess] = useState('');
+  const [showCompanyView, setShowCompanyView] = useState(false);
 
   useShowcaseEmbedHeight(isEmbed);
+
+  const closeCompanyView = useCallback(() => {
+    setShowCompanyView(false);
+    if (window.location.hash === '#company') {
+      window.history.back();
+    }
+  }, []);
+
+  // Lock body & html scroll so there are no duplicate scrollbars
+  useEffect(() => {
+    if (showCompanyView) {
+      const origBodyOverflow = document.body.style.overflow;
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = origBodyOverflow;
+        document.documentElement.style.overflow = origHtmlOverflow;
+      };
+    }
+  }, [showCompanyView]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showCompanyView) {
+        closeCompanyView();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showCompanyView, closeCompanyView]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setShowCompanyView(false);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Swipe side to go back handlers (touch + mouse drag)
+  const swipeStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const [swipeOffset, setSwipeOffset] = useState(0);
+
+  const handleTouchStart = (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    swipeStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now()
+    };
+  };
+
+  const handleTouchMove = (e) => {
+    if (!swipeStartRef.current || !e.touches || e.touches.length === 0) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - swipeStartRef.current.x;
+    const deltaY = currentY - swipeStartRef.current.y;
+
+    // Only apply visual translate if horizontal movement is dominant
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      setSwipeOffset(deltaX);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!swipeStartRef.current || !e.changedTouches || e.changedTouches.length === 0) {
+      setSwipeOffset(0);
+      return;
+    }
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const deltaX = endX - swipeStartRef.current.x;
+    const deltaY = endY - swipeStartRef.current.y;
+    const elapsed = Date.now() - swipeStartRef.current.time;
+    swipeStartRef.current = { x: 0, y: 0, time: 0 };
+    setSwipeOffset(0);
+
+    // Detect side swipe (swipe right or left with horizontal dominance)
+    const isHorizontal = Math.abs(deltaX) > 30 && Math.abs(deltaX) > Math.abs(deltaY) * 0.8;
+    if (isHorizontal) {
+      // Swiping to the right or left with speed or distance
+      if (Math.abs(deltaX) > 40 || elapsed < 400) {
+        closeCompanyView();
+      }
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    swipeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now()
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!swipeStartRef.current || !swipeStartRef.current.time) return;
+    const deltaX = e.clientX - swipeStartRef.current.x;
+    const deltaY = e.clientY - swipeStartRef.current.y;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      setSwipeOffset(deltaX);
+    }
+  };
+
+  const handleMouseUp = (e) => {
+    if (!swipeStartRef.current || !swipeStartRef.current.time) return;
+    const deltaX = e.clientX - swipeStartRef.current.x;
+    const deltaY = e.clientY - swipeStartRef.current.y;
+    const elapsed = Date.now() - swipeStartRef.current.time;
+    swipeStartRef.current = { x: 0, y: 0, time: 0 };
+    setSwipeOffset(0);
+
+    const isHorizontal = Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 0.8;
+    if (isHorizontal) {
+      if (Math.abs(deltaX) > 45 || elapsed < 400) {
+        closeCompanyView();
+      }
+    }
+  };
 
   useEffect(() => {
     if (isMock) {
@@ -179,6 +301,39 @@ function GeneralProfileView() {
     if (username) fetchProfile();
   }, [username, isMock]);
 
+  const handleOpenCompanyView = async () => {
+    setShowCompanyView(true);
+    try {
+      if (window.location.hash !== '#company') {
+        window.history.pushState({ companyView: true }, '', '#company');
+      }
+    } catch (e) {}
+    if (username && !isMock) {
+      try {
+        const res = await generalProfileAPI.getByUsername(username);
+        if (res && res.success && res.data) {
+          setProfile(prev => ({ ...prev, ...res.data }));
+        }
+      } catch (e) {
+        console.warn('Could not refresh company profile:', e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (username && !isMock) {
+        generalProfileAPI.getByUsername(username).then(res => {
+          if (res && res.success && res.data) {
+            setProfile(prev => ({ ...prev, ...res.data }));
+          }
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [username, isMock]);
+
   // Inject helper style tags if loaded inside an iframe (visual editor mode)
   useEffect(() => {
     try {
@@ -233,6 +388,38 @@ function GeneralProfileView() {
     if (window.self === window.top) return;
 
     const handleIframeClick = (e) => {
+      // 0. Founder-specific elements
+      if (e.target.closest('.founder-company-card')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'company' }, '*');
+        return;
+      }
+      if (e.target.closest('.founder-deck-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'deck' }, '*');
+        return;
+      }
+      if (e.target.closest('.founder-cta-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'cta' }, '*');
+        return;
+      }
+      if (e.target.closest('.founder-milestones-section')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'milestones' }, '*');
+        return;
+      }
+      if (e.target.closest('.founder-team-section')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'team' }, '*');
+        return;
+      }
+
       // 1. Location Eyebrow
       const locEl = e.target.closest('.name-eyebrow');
       if (locEl) {
@@ -323,7 +510,7 @@ function GeneralProfileView() {
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'DRAFT_UPDATE') {
         setProfile(prev => {
-          if (!prev) return prev;
+          if (!prev) return event.data.data;
           return {
             ...prev,
             ...event.data.data
@@ -381,30 +568,14 @@ function GeneralProfileView() {
     );
   }
 
-  const isInsideIframe = typeof window !== 'undefined' && window.self !== window.top;
-  const isPaymentModeActive = Boolean(profile?.paymentActive && profile?.upiId);
-
-  // When payments are active, physical NFC taps / direct URL visits open the payment link directly!
-  // Profile is bypassed, exactly as requested by user.
-  if (isPaymentModeActive && !isInsideIframe && !showProfileFallback) {
-    return (
-      <NfcPaymentView
-        customData={{
-          tagCode: `@${profile.username}`,
-          payeeName: profile.paymentPayeeName || profile.name || 'Payee',
-          payeeUpiId: profile.upiId,
-          amount: profile.paymentAmount || 0,
-          title: profile.title || '',
-          note: profile.paymentNote || `Payment to @${profile.username}`
-        }}
-        onBackToProfile={() => setShowProfileFallback(true)}
-      />
-    );
-  }
 
   const isRestaurant = profile?.profileType === 'restaurant';
+  const isFounder = (!isRestaurant && (profile?.profileType === 'founder' ||
+                    searchParams.get('profileType') === 'founder' ||
+                    searchParams.get('type') === 'founder' ||
+                    Boolean(profile?.companyName || (profile?.milestones && profile.milestones.length > 0) || (profile?.coFounders && profile.coFounders.length > 0) || profile?.pitchDeckPdf)));
   const links = (profile.links || []).filter(l => l.url).sort((a, b) => (a.order || 0) - (b.order || 0));
-  const theme = getThemeById(themeOverride || profile.theme || 'midnight');
+  const theme = getThemeById(themeOverride || profile.theme || (isFounder ? 'custom-theme' : 'midnight'));
   const bioLines = String(profile.bio || '').split('\n').map((line) => line.trim()).filter(Boolean);
   const cleanBio = bioLines
     .filter((line) => !line.startsWith('📞') && !line.startsWith('✉'))
@@ -457,12 +628,12 @@ function GeneralProfileView() {
     }
   };
 
-  const currentThemeId = themeOverride === 'light' ? 'grey' : (profile?.theme || 'midnight');
+  const currentThemeId = themeOverride === 'light' ? 'grey' : (profile?.theme || (isFounder ? 'custom-theme' : 'midnight'));
   const resolvedTheme = getThemeById(currentThemeId);
-  const themeBg = themeOverride === 'light' ? '#ffffff' : (resolvedTheme?.bg || '#F7F3EE');
-  const themeText = themeOverride === 'light' ? '#0A0A0A' : (resolvedTheme?.text || '#0A0A0A');
-  const themeLinkBg = themeOverride === 'light' ? 'rgba(0,0,0,0.05)' : (resolvedTheme?.linkBg || 'rgba(255,255,255,0.08)');
-  const isTextDark = themeOverride === 'light' ? true : !resolvedTheme.isDark;
+  const themeBg = isFounder ? '#F7F3EE' : (themeOverride === 'light' ? '#ffffff' : (resolvedTheme?.bg || '#F7F3EE'));
+  const themeText = isFounder ? '#0A0A0A' : (themeOverride === 'light' ? '#0A0A0A' : (resolvedTheme?.text || '#0A0A0A'));
+  const themeLinkBg = isFounder ? '#C8001A' : (themeOverride === 'light' ? 'rgba(0,0,0,0.05)' : (resolvedTheme?.linkBg || 'rgba(255,255,255,0.08)'));
+  const isTextDark = isFounder ? true : (themeOverride === 'light' ? true : !resolvedTheme.isDark);
 
   const linkedArtItems = profile?.artLinks
     ? (Array.isArray(profile.artLinks) ? profile.artLinks : Object.values(profile.artLinks))
@@ -963,27 +1134,6 @@ function GeneralProfileView() {
 
   return (
     <div className={`artist-public-container ${resolvedTheme?.className || ''}`}>
-      {isPaymentModeActive && isInsideIframe && (
-        <div style={{
-          background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
-          color: '#ffffff',
-          padding: '8px 12px',
-          fontSize: '11px',
-          fontWeight: 700,
-          textAlign: 'center',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px',
-          letterSpacing: '0.3px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 99999,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-        }}>
-          <span>⚡ NFC Tap-to-Pay Mode is ACTIVE (₹{profile.paymentAmount || 0})</span>
-        </div>
-      )}
       {success && (
         <div className="profile-success-overlay" role="dialog" aria-live="polite" onClick={() => setSuccess('')} style={{ zIndex: 10000 }}>
           <div className="profile-success-modal" onClick={(e) => e.stopPropagation()}>
@@ -1019,9 +1169,9 @@ function GeneralProfileView() {
 
         {/* TOPBAR */}
         <div className="topbar">
-          <div className="topbar-brand"><b>NANO</b>PROFILES</div>
+          <div className="topbar-brand"><b style={{ color: 'var(--red)' }}>NANO</b>PROFILES</div>
           <div className="topbar-handle">
-            <span className="live-dot"></span>
+            <span className="live-dot" style={{ background: 'var(--red)' }}></span>
             @{profile.username || username}
           </div>
         </div>
@@ -1242,6 +1392,74 @@ function GeneralProfileView() {
                 )}
               </div>
             )}
+
+            {/* Founder Company */}
+            {isFounder && (profile.companyName || profile.foundingYear || isPreview) && (
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {(profile.companyName || isPreview) && profile.showCompany !== false && (
+                  <div
+                    className="founder-company-card"
+                    onClick={handleOpenCompanyView}
+                    style={{
+                      padding: '16px',
+                      borderRadius: '14px',
+                      background: 'rgba(10,10,10,0.04)',
+                      border: '1px solid rgba(10,10,10,0.08)',
+                      display: 'flex',
+                      alignItems: 'stretch',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      minHeight: '76px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.borderColor = 'rgba(200,0,26,0.3)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = 'rgba(10,10,10,0.08)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                        {profile.companyName || (isPreview ? 'Click to View Company Details' : 'Company')}
+                      </span>
+                      {(profile.foundingYear || isPreview) && (
+                        <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>
+                          <span>Est. {profile.foundingYear || '2024'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '50%',
+                        background: 'rgba(200,0,26,0.06)',
+                        color: 'var(--red)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        alignSelf: 'flex-end',
+                        marginTop: 'auto',
+                        marginLeft: '12px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -1313,7 +1531,186 @@ function GeneralProfileView() {
         )}
         {showAboutEffectively && (cleanBio || isPreview) && <div className="divider"></div>}
 
-        {/* WHAT I DO (Suggestions) */}
+        {/* FOUNDER MILESTONES & TRACTION */}
+        {isFounder && profile.showMilestones !== false && (((profile.milestones || []).length > 0) || isPreview) && (
+          <>
+            <section className="section founder-milestones-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+              <div className="section-head" style={{ marginBottom: '16px' }}>
+                <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRACTION &amp; MILESTONES</div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {(profile.milestones && profile.milestones.length > 0) ? (
+                  profile.milestones.map((m, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '6px',
+                        background: '#0A0A0A',
+                        color: '#F7F3EE',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        letterSpacing: '0.3px',
+                        border: '1.5px solid var(--red)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        lineHeight: 1.35
+                      }}
+                    >
+                      <span style={{ color: 'var(--red)', fontSize: '10px', flexShrink: 0 }}>●</span>
+                      <span>{m.label}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '8px 16px', borderRadius: '6px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
+                    + Click to add Milestones &amp; Traction metrics
+                  </div>
+                )}
+              </div>
+            </section>
+            <div className="divider"></div>
+          </>
+        )}
+
+        {/* FOUNDER CO-FOUNDERS & LEADERSHIP TEAM */}
+        {isFounder && profile.showCoFounders !== false && (((profile.coFounders || []).length > 0) || isPreview) && (
+          <>
+            <section className="section founder-team-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+              <div className="section-head" style={{ marginBottom: '16px' }}>
+                <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>LEADERSHIP &amp; TEAM</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(profile.coFounders && profile.coFounders.length > 0) ? (
+                  profile.coFounders.map((cf, idx) => {
+                    const rawNano = (cf.nanoUsername || cf.username || cf.handle || cf.artistId || '').trim();
+                    let nanoUser = '';
+                    if (rawNano) {
+                      const linkMatch = rawNano.match(/\/link\/([a-zA-Z0-9_-]+)/);
+                      nanoUser = linkMatch && linkMatch[1] ? linkMatch[1] : rawNano.replace(/^@+/, '').trim();
+                    }
+                    if (!nanoUser && cf.name && cf.name.startsWith('@')) {
+                      nanoUser = cf.name.replace(/^@+/, '').trim();
+                    }
+                    if (!nanoUser && (cf.name || '').toLowerCase().includes('vamshi')) {
+                      nanoUser = 'capvamshi';
+                    }
+                    const nanoUrl = nanoUser ? `/link/${nanoUser}` : null;
+
+                    const displayName = (cf.name || '').replace(/\|/g, ' ').trim() || (nanoUser ? `@${nanoUser}` : 'Team Member');
+                    const displayRole = (cf.role || 'Co-Founder').replace(/\|/g, ' ').trim();
+
+                    const handleCardClick = (e) => {
+                      if (!nanoUrl) return;
+                      if (window.self !== window.top) {
+                        e.preventDefault();
+                        window.open(nanoUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    };
+
+                    return (
+                      <a
+                        key={idx}
+                        href={nanoUrl || undefined}
+                        onClick={handleCardClick}
+                        target={nanoUrl ? '_blank' : undefined}
+                        rel={nanoUrl ? 'noopener noreferrer' : undefined}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'stretch',
+                          justifyContent: 'space-between',
+                          padding: '14px 16px',
+                          borderRadius: '16px',
+                          background: '#ffffff',
+                          border: '1px solid rgba(10,10,10,0.08)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          cursor: nanoUrl ? 'pointer' : 'default',
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (nanoUrl) {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.borderColor = 'rgba(200,0,26,0.3)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (nanoUrl) {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.borderColor = 'rgba(10,10,10,0.08)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            background: 'rgba(200,0,26,0.08)',
+                            color: 'var(--red)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            fontSize: '1rem',
+                            overflow: 'hidden',
+                            border: '1px solid rgba(200,0,26,0.2)',
+                            flexShrink: 0
+                          }}>
+                            {cf.photo ? <img src={cf.photo} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0A0A0A', lineHeight: 1.3 }}>
+                              {displayName}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginTop: '3px', lineHeight: 1.3 }}>
+                              {displayRole}
+                            </div>
+                          </div>
+                        </div>
+                        {nanoUrl && (
+                          <div
+                            style={{
+                              width: '30px',
+                              height: '30px',
+                              borderRadius: '50%',
+                              background: 'rgba(200,0,26,0.06)',
+                              color: 'var(--red)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              alignSelf: 'flex-end',
+                              marginTop: 'auto',
+                              marginLeft: '12px',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="5" y1="12" x2="19" y2="12"></line>
+                              <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                          </div>
+                        )}
+                      </a>
+                    );
+                  })
+                ) : (
+                  <div style={{ padding: '14px 18px', borderRadius: '12px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', textAlign: 'center', cursor: 'pointer' }}>
+                    + Click to add Co-Founders &amp; Key Team Members
+                  </div>
+                )}
+              </div>
+            </section>
+            <div className="divider"></div>
+          </>
+        )}
+
+        {/* WHAT I DO (Suggestions / Ventures) */}
         {showWhatIDoEffectively && (Array.isArray(suggestions) && (suggestions.length > 0 || isPreview)) && (
           <section 
             className="section" 
@@ -1348,7 +1745,9 @@ function GeneralProfileView() {
               </div>
             )}
             <div className="section-head" style={{ marginBottom: '20px' }}>
-              <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>{profile.suggestionsTitle || 'What I Do'}</div>
+              <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>
+                {isFounder ? (profile.suggestionsTitle || 'VENTURES & PRODUCTS') : (profile.suggestionsTitle || 'What I Do')}
+              </div>
             </div>
             <div className="services-grid">
               {suggestions && suggestions.length > 0 ? (
@@ -1694,6 +2093,239 @@ function GeneralProfileView() {
               alt=""
               className="gp-modal-img"
             />
+          </div>
+        )}
+
+        {/* Dedicated Company View Overlay */}
+        {showCompanyView && (
+          <div
+            className="founder-company-modal-overlay"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10000,
+              background: 'var(--cream, #ffffff)',
+              color: 'var(--ink, #0f172a)',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '24px 20px 60px',
+              boxSizing: 'border-box',
+              transform: swipeOffset ? `translateX(${swipeOffset}px)` : 'translateX(0)',
+              transition: swipeOffset ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            <div style={{ width: '100%', maxWidth: '540px', display: 'flex', flexDirection: 'column' }}>
+              {(() => {
+                const companyName = profile?.companyName || (isPreview ? 'Company Name' : 'Company');
+                const companyDesc = (profile?.companyDescription || profile?.company_description || profile?.companyDesc || '').trim();
+                const companyImg = (profile?.companyImage || profile?.company_image || profile?.companyImg || '').trim();
+                const companyWeb = (profile?.companyWebsite || profile?.company_website || '').trim();
+                const foundingYr = (profile?.foundingYear || profile?.founding_year || '').trim();
+
+                return (
+                  <>
+                    {/* Top Header - clean with close button and swipe hint */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '20px',
+                      paddingBottom: '8px',
+                      borderBottom: '1px solid rgba(10,10,10,0.06)'
+                    }}>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: 'var(--ink, #0f172a)',
+                        opacity: 0.7
+                      }}>
+                        Company Profile
+                      </div>
+                      <button
+                        type="button"
+                        onClick={closeCompanyView}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--ink, #0f172a)',
+                          cursor: 'pointer',
+                          opacity: 0.5,
+                          padding: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '50%',
+                          transition: 'opacity 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+                        title="Close"
+                        aria-label="Close"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Company Image / Banner */}
+                    {companyImg ? (
+                      <div style={{
+                        width: '100%',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        marginBottom: '20px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                        border: '1px solid rgba(10,10,10,0.08)',
+                        background: '#000000',
+                        maxHeight: '260px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <img
+                          src={fixImageUrl(companyImg) || companyImg}
+                          alt={companyName}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: '260px' }}
+                        />
+                      </div>
+                    ) : isPreview ? (
+                      <div style={{
+                        width: '100%',
+                        padding: '36px 16px',
+                        borderRadius: '16px',
+                        border: '2px dashed rgba(10,10,10,0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        marginBottom: '20px',
+                        color: 'var(--muted, #64748b)',
+                        fontSize: '0.85rem',
+                        boxSizing: 'border-box'
+                      }}>
+                        <span style={{ fontWeight: 600 }}>No Company Image uploaded</span>
+                        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>Upload an image under "Company &amp; Venture" in the dashboard</span>
+                      </div>
+                    ) : null}
+
+                    {/* Company Title & Est */}
+                    <div style={{ marginBottom: '18px' }}>
+                      <h1 style={{
+                        fontSize: '1.45rem',
+                        fontWeight: 800,
+                        color: 'var(--ink, #0f172a)',
+                        margin: '0 0 6px 0',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                        lineHeight: 1.25,
+                        fontFamily: 'var(--font-heading, inherit)'
+                      }}>
+                        {companyName}
+                      </h1>
+                      {foundingYr && (
+                        <div style={{ fontSize: '0.82rem', color: 'var(--muted, #64748b)', fontWeight: 600 }}>
+                          Established {foundingYr}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Website CTA Button */}
+                    {companyWeb && (
+                      <a
+                        href={companyWeb.startsWith('http') ? companyWeb : `https://${companyWeb}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '12px 18px',
+                          borderRadius: '12px',
+                          background: 'var(--red, #C8001A)',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          textDecoration: 'none',
+                          marginBottom: '24px',
+                          boxShadow: '0 4px 12px rgba(200,0,26,0.25)',
+                          boxSizing: 'border-box',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.92'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      >
+                        Visit Website
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="7" y1="17" x2="17" y2="7"></line>
+                          <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
+                      </a>
+                    )}
+
+                    {/* Company Description */}
+                    <div style={{
+                      background: 'rgba(10,10,10,0.03)',
+                      border: '1px solid rgba(10,10,10,0.06)',
+                      borderRadius: '16px',
+                      padding: '20px',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: 'var(--muted, #64748b)',
+                        marginBottom: '10px'
+                      }}>
+                        About The Company
+                      </div>
+                      {companyDesc ? (
+                        <div style={{
+                          fontSize: '0.95rem',
+                          lineHeight: 1.65,
+                          color: 'var(--ink, #1e293b)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          fontFamily: 'var(--font-body, inherit)'
+                        }}>
+                          {companyDesc}
+                        </div>
+                      ) : (
+                        <div style={{
+                          fontSize: '0.9rem',
+                          color: 'var(--muted, #64748b)',
+                          fontStyle: 'italic',
+                          lineHeight: 1.5
+                        }}>
+                          {isPreview ? 'No company description added yet. Add a detailed description of your venture in the dashboard.' : 'No description provided.'}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         )}
       </div>
