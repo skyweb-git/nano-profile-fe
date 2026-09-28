@@ -18,6 +18,7 @@ const ProfessionalShowcase = lazy(() => import('./pages/ProfessionalShowcase'));
 const ArtGalleryPage = lazy(() => import('./pages/ArtGalleryPage'));
 const MasterArtRedirect = lazy(() => import('./pages/MasterArtRedirect'));
 const NfcPaymentView = lazy(() => import('./pages/NfcPaymentView'));
+const InstagramArtworkCropShowcase = lazy(() => import('./pages/InstagramArtworkCropShowcase'));
 
 function App() {
 
@@ -99,6 +100,16 @@ function App() {
           <Route path="/professional-showcase" element={
             <Suspense fallback={<ShowcaseSkeleton type="professional" />}>
               <ProfessionalShowcase />
+            </Suspense>
+          } />
+          <Route path="/artwork-crop" element={
+            <Suspense fallback={<ShowcaseSkeleton type="home" />}>
+              <InstagramArtworkCropShowcase />
+            </Suspense>
+          } />
+          <Route path="/crop-artwork" element={
+            <Suspense fallback={<ShowcaseSkeleton type="home" />}>
+              <InstagramArtworkCropShowcase />
             </Suspense>
           } />
 {/* <Route path="/resume" element={<ResumePage />} /> */}

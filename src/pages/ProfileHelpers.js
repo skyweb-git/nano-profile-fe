@@ -386,13 +386,15 @@ export function useImageCropper(setError) {
         open: true,
         image: blobUrl,
         aspect,
-        onComplete: async (pixelCrop, rotation) => {
+        onComplete: async (pixelCrop, rotation, targetDimensions) => {
           try {
-            const croppedDataUrl = await getCroppedImg(blobUrl, pixelCrop, rotation);
+            const croppedDataUrl = await getCroppedImg(blobUrl, pixelCrop, rotation, targetDimensions);
             URL.revokeObjectURL(blobUrl);
             const res = await fetch(croppedDataUrl);
             const blob = await res.blob();
             const croppedFile = new File([blob], file.name || 'cropped.jpg', { type: 'image/jpeg' });
+            croppedFile.pixelCrop = pixelCrop;
+            croppedFile.targetDimensions = targetDimensions;
             resolve(croppedFile);
           } catch (err) {
             URL.revokeObjectURL(blobUrl);

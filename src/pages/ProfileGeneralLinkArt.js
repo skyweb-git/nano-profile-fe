@@ -55,10 +55,19 @@ export default function ProfileGeneralLinkArt({
   const getQrUrl = (artUrl) => `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(artUrl)}&bgcolor=ffffff&color=1a1a2e&qzone=2`;
 
   const handleArtImagePick = (e) => {
-    handlePickAndCropBatch(e, 3 / 4, async (croppedFile) => {
+    handlePickAndCropBatch(e, 1, async (croppedFile) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setArtImagePreview(prev => [...prev, { file: croppedFile, url: ev.target.result }]);
+        setArtImagePreview(prev => [
+          ...prev,
+          {
+            file: croppedFile,
+            url: ev.target.result,
+            ratio: croppedFile.targetDimensions?.ratioId || '1:1',
+            width: croppedFile.targetDimensions?.width || 1080,
+            height: croppedFile.targetDimensions?.height || 1080
+          }
+        ]);
       };
       reader.readAsDataURL(croppedFile);
     });
@@ -81,7 +90,19 @@ export default function ProfileGeneralLinkArt({
         throw new Error('Image upload did not return URLs. Try again.');
       }
       const artId = Date.now();
-      const newItem = { id: artId, title, description: desc || '', theme: newArtTheme, images: uploadedUrls, itemType: label };
+      const firstPreview = artImagePreview[0];
+      const newItem = {
+        id: artId,
+        title,
+        description: desc || '',
+        theme: newArtTheme,
+        images: uploadedUrls,
+        itemType: label,
+        ratio: firstPreview?.ratio || '1:1',
+        width: firstPreview?.width || 1080,
+        height: firstPreview?.height || 1080,
+        aspectRatio: firstPreview?.ratio === '1.91:1' ? '1.91/1' : firstPreview?.ratio === '9:16' ? '9/16' : '1/1'
+      };
       const extraPayload = {};
       if (activeTab === 'what-i-do') {
         extraPayload.showWhatIDo = true;
