@@ -87,6 +87,9 @@ export default async function getCroppedImg(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
+  ctx.fillStyle = '#090b11';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   ctx.drawImage(
     offscreen,
     pixelCrop.x,

@@ -362,8 +362,17 @@ export default function ProfileArtistLinkArt({
 
                       {/* Artwork image */}
                       {coverImage ? (
-                        <div style={{ width: '100%', height: '140px', overflow: 'hidden' }}>
-                          <img src={coverImage} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{
+                          width: '100%',
+                          aspectRatio: item.aspectRatio || (item.ratio === '9:16' ? '9/16' : item.ratio === '1.91:1' ? '1.91/1' : '1/1'),
+                          maxHeight: '240px',
+                          overflow: 'hidden',
+                          background: '#090b11',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <img src={coverImage} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         </div>
                       ) : (
                         <div className="dash-art-placeholder" style={{ background: `linear-gradient(90deg, ${theme.color}, ${theme.color}88)` }} />
