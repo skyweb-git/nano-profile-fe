@@ -26,19 +26,20 @@ const mapFounderProfileToArtistFormat = (data, profileType = 'founder') => {
   return {
     ...data,
     profileType,
-    companyName: data.companyName || (isCompany ? 'Skyweb IT Solutions' : 'Nexus Tech Labs'),
-    companyWebsite: data.companyWebsite || 'https://nexustechlabs.com',
-    foundingYear: data.foundingYear || '2023',
+    linkedCompanyUsername: (data.linkedCompanyUsername || '').toLowerCase().trim(),
+    companyName: data.companyName || (isCompany ? 'Skyweb IT Solutions' : ''),
+    companyWebsite: data.companyWebsite || (isCompany ? 'https://nexustechlabs.com' : ''),
+    foundingYear: data.foundingYear || (isCompany ? '2023' : ''),
     fundingStage: '',
     teamSize: '',
     pitchDeckPdf: '',
     ctaLabel: '',
     ctaUrl: '',
-    milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : [
-      { label: isCompany ? 'Products Shipped' : '$1.2M Seed Raised' },
-      { label: isCompany ? 'Clients Served' : '50K+ Active Users' },
-      { label: isCompany ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
-    ],
+    milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : (isCompany ? [] : [
+      { label: '$1.2M Seed Raised' },
+      { label: '50K+ Active Users' },
+      { label: 'Top 5 Product Hunt' }
+    ]),
     coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : (isCompany ? [] : [
       { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
       { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
@@ -128,14 +129,15 @@ export default function ProfileFounderController(props) {
       if (data && data.username) {
         // Auto-initialize if it is an empty profile created via admin panel
         const isEmptyProfile = !data.name && !data.title && !data.bio && (!data.links || data.links.length === 0);
-        const needsFounderInit = !data.companyName || data.profileType !== profileType;
+        const needsFounderInit = data.profileType !== profileType || (isCompanyProfile && !data.companyName);
         if (isEmptyProfile || !data.isSetup || needsFounderInit) {
           const base = window.location.origin;
           const initializePayload = {
             profileType,
-            companyName: data.companyName || (isCompanyProfile ? 'Skyweb IT Solutions' : 'Nexus Tech Labs'),
-            companyWebsite: data.companyWebsite || 'https://nexustechlabs.com',
-            foundingYear: data.foundingYear || '2023',
+            linkedCompanyUsername: data.linkedCompanyUsername || '',
+            companyName: data.companyName || (isCompanyProfile ? 'Skyweb IT Solutions' : ''),
+            companyWebsite: data.companyWebsite || (isCompanyProfile ? 'https://nexustechlabs.com' : ''),
+            foundingYear: data.foundingYear || (isCompanyProfile ? '2023' : ''),
             fundingStage: '',
             teamSize: '',
             pitchDeckPdf: '',
@@ -689,19 +691,20 @@ export default function ProfileFounderController(props) {
         username: (formData.artistId || '').toLowerCase().trim(),
         specialization: formData.specialization || '',
         title: formData.experience || (isCompanyProfile ? 'Technology Company' : 'Co-Founder & CEO'),
-        companyName: formData.companyName || '',
-        companyWebsite: formData.companyWebsite || '',
-        foundingYear: formData.foundingYear || '2023',
+        linkedCompanyUsername: formData.linkedCompanyUsername || '',
+        companyName: isCompanyProfile ? (formData.companyName || '') : '',
+        companyWebsite: isCompanyProfile ? (formData.companyWebsite || '') : '',
+        foundingYear: isCompanyProfile ? (formData.foundingYear || '2023') : '',
         fundingStage: '',
         teamSize: '',
         pitchDeckPdf: '',
         ctaLabel: '',
         ctaUrl: '',
-        milestones: formData.milestones || [
-          { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
-          { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
-          { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
-        ],
+        milestones: formData.milestones || (isCompanyProfile ? [] : [
+          { label: '$1.2M Seed Raised' },
+          { label: '50K+ Active Users' },
+          { label: 'Top 5 Product Hunt' }
+        ]),
         coFounders: formData.coFounders || (isCompanyProfile ? [] : [
           { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
           { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
@@ -791,18 +794,19 @@ export default function ProfileFounderController(props) {
         name: isCompanyProfile ? 'SKYWEB|IT' : 'RAHUL|SHARMA',
         title: isCompanyProfile ? 'Technology Company' : 'Co-Founder & CEO',
         specialization: isCompanyProfile ? 'Software, Cloud, Digital Products' : 'FinTech, AI, SaaS, Venture Capital',
-        companyName: isCompanyProfile ? 'Skyweb IT Solutions' : 'Nexus Tech Labs',
-        companyWebsite: 'https://nexustechlabs.com',
-        foundingYear: '2023',
+        linkedCompanyUsername: '',
+        companyName: isCompanyProfile ? 'Skyweb IT Solutions' : '',
+        companyWebsite: isCompanyProfile ? 'https://nexustechlabs.com' : '',
+        foundingYear: isCompanyProfile ? '2023' : '',
         fundingStage: '',
         teamSize: '',
         pitchDeckPdf: '',
         ctaLabel: '',
         ctaUrl: '',
-        milestones: [
-          { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
-          { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
-          { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
+        milestones: isCompanyProfile ? [] : [
+          { label: '$1.2M Seed Raised' },
+          { label: '50K+ Active Users' },
+          { label: 'Top 5 Product Hunt' }
         ],
         coFounders: isCompanyProfile ? [] : [
           { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },

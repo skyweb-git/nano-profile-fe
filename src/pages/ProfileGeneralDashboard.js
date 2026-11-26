@@ -145,6 +145,13 @@ export default function ProfileGeneralDashboard(props) {
   const liveCoFounders = useLiveTeamMembers(storedCoFounders);
   const [memberFetchMsg, setMemberFetchMsg] = useState('');
   const [isUploadingDeck, setIsUploadingDeck] = useState(false);
+  const [companyLinkInput, setCompanyLinkInput] = useState('');
+  const [companyLinkPreview, setCompanyLinkPreview] = useState(null);
+  const [companyLinkMsg, setCompanyLinkMsg] = useState('');
+  const [isFetchingCompany, setIsFetchingCompany] = useState(false);
+  const [trustedCompanyInput, setTrustedCompanyInput] = useState('');
+  const [trustedCompanyMsg, setTrustedCompanyMsg] = useState('');
+  const [isAddingTrustedCompany, setIsAddingTrustedCompany] = useState(false);
 
   // Lock page scroll when platform selector modal is open (style-tag injection is stronger than JS style property)
   useEffect(() => {
@@ -302,6 +309,9 @@ export default function ProfileGeneralDashboard(props) {
         const cleanData = JSON.parse(JSON.stringify({
           ...artist,
           profileType: isCompany ? 'company' : (isFounder ? 'founder' : (artist?.profileType || 'general')),
+          linkedCompanyUsername: heroUpdates.linkedCompanyUsername !== undefined
+            ? heroUpdates.linkedCompanyUsername
+            : (artist?.linkedCompanyUsername || ''),
           companyName: heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || ''),
           companyWebsite: heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || ''),
           foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
@@ -982,7 +992,282 @@ export default function ProfileGeneralDashboard(props) {
     );
   };
 
+  const renderFounderLinkCompanyEditor = () => {
+    const linkedUsername = (
+      heroUpdates.linkedCompanyUsername !== undefined
+        ? heroUpdates.linkedCompanyUsername
+        : (artist?.linkedCompanyUsername || '')
+    ).toLowerCase().trim();
+
+    const linkedName = heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || '');
+    const linkedLogo = heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || '');
+    const preview = companyLinkPreview;
+
+    const handleFetchCompany = async () => {
+      const clean = extractNanoUsername(companyLinkInput);
+      if (!clean) {
+        setCompanyLinkMsg('Enter a company Nano username.');
+        return;
+      }
+      setIsFetchingCompany(true);
+      setCompanyLinkMsg(`Looking up @${clean}...`);
+      setCompanyLinkPreview(null);
+      try {
+        const res = await generalProfileAPI.getByUsername(clean);
+        const data = res?.data;
+        if (!data || !data.username) {
+          setCompanyLinkMsg(`No Nano profile found for @${clean}.`);
+          return;
+        }
+        if (data.profileType !== 'company') {
+          setCompanyLinkMsg(`@${clean} is not a company profile. Enter a company username.`);
+          return;
+        }
+        const name = (data.companyName || data.name || '').replace(/\|/g, ' ').trim() || `@${clean}`;
+        const logo = data.photo || data.companyImage || '';
+        setCompanyLinkPreview({
+          username: (data.username || clean).toLowerCase(),
+          name,
+          photo: logo,
+          foundingYear: data.foundingYear || ''
+        });
+        setCompanyLinkMsg('');
+      } catch (_) {
+        setCompanyLinkMsg(`No Nano profile found for @${clean}.`);
+      } finally {
+        setIsFetchingCompany(false);
+      }
+    };
+
+    const handleSaveLinkedCompany = async () => {
+      const source = preview || (linkedUsername ? {
+        username: linkedUsername,
+        name: linkedName,
+        photo: linkedLogo
+      } : null);
+      if (!source?.username) {
+        setCompanyLinkMsg('Fetch a company profile first.');
+        return;
+      }
+      const username = String(source.username).toLowerCase().trim();
+      const payload = {
+        linkedCompanyUsername: username,
+        companyName: source.name || '',
+        companyImage: source.photo || '',
+        companyWebsite: '',
+        foundingYear: source.foundingYear || '',
+        companyDescription: '',
+        showCompany: true
+      };
+      setHeroUpdates(prev => ({ ...prev, ...payload }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, ...payload } : a));
+      await handleUpdateHeroField('linkedCompanyUsername', username, payload);
+      setCompanyLinkInput('');
+      setCompanyLinkPreview(null);
+      setCompanyLinkMsg('');
+      setActiveEditor('default');
+    };
+
+    const handleUnlinkCompany = async () => {
+      const payload = {
+        linkedCompanyUsername: '',
+        companyName: '',
+        companyImage: '',
+        companyWebsite: '',
+        foundingYear: '',
+        companyDescription: ''
+      };
+      setHeroUpdates(prev => ({ ...prev, ...payload }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, ...payload } : a));
+      setCompanyLinkPreview(null);
+      setCompanyLinkInput('');
+      await handleUpdateHeroField('linkedCompanyUsername', '', payload);
+    };
+
+    const displayCard = preview || (linkedUsername ? {
+      username: linkedUsername,
+      name: linkedName || `@${linkedUsername}`,
+      photo: linkedLogo
+    } : null);
+
+    return (
+      <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        {renderEditorHeader("Link Company", "showCompany")}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Link your company profile</h5>
+            <p style={{ margin: '0 0 0.85rem 0', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.4 }}>
+              Enter your Nano company username. We&apos;ll fetch the name and logo for the tile on your founder profile.
+            </p>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', width: '100%' }}>
+              <div style={{ display: 'flex', flex: 1, minWidth: 0, height: '44px', alignItems: 'center' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 0.9rem',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRight: 'none',
+                  borderRadius: '8px 0 0 8px',
+                  color: '#64748b',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  userSelect: 'none',
+                  height: '100%'
+                }}>@</span>
+                <input
+                  type="text"
+                  value={companyLinkInput}
+                  onChange={(e) => setCompanyLinkInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleFetchCompany(); } }}
+                  placeholder="company_username"
+                  disabled={isFetchingCompany}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    height: '100%',
+                    padding: '0 0.9rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '0 8px 8px 0',
+                    outline: 'none',
+                    fontSize: '0.95rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleFetchCompany}
+                disabled={isFetchingCompany || !companyLinkInput.trim()}
+                style={{
+                  height: '44px',
+                  padding: '0 1.1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isFetchingCompany || !companyLinkInput.trim() ? '#94a3b8' : '#0f172a',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: isFetchingCompany || !companyLinkInput.trim() ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {isFetchingCompany ? 'Fetching...' : 'Fetch'}
+              </button>
+            </div>
+            {companyLinkMsg && (
+              <p style={{
+                margin: '0.65rem 0 0',
+                fontSize: '0.8rem',
+                color: /not a company|no nano profile|enter a company/i.test(companyLinkMsg) ? '#dc2626' : '#2563eb'
+              }}>
+                {companyLinkMsg}
+              </p>
+            )}
+          </div>
+
+          {displayCard && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              borderRadius: '14px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                background: '#f1f5f9',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {displayCard.photo ? (
+                  <img src={displayCard.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontWeight: 800, color: '#64748b' }}>
+                    {(displayCard.name || 'C').charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  {displayCard.name}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>@{displayCard.username}</div>
+              </div>
+              {linkedUsername && !preview && (
+                <button
+                  type="button"
+                  onClick={handleUnlinkCompany}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    borderRadius: '8px',
+                    padding: '0.4rem 0.7rem',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Unlink
+                </button>
+              )}
+            </div>
+          )}
+
+          {renderMobileToggle("showCompany")}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={handleSaveLinkedCompany}
+              disabled={!preview && !linkedUsername}
+              style={{
+                flex: 1,
+                padding: '0.8rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: (!preview && !linkedUsername) ? '#94a3b8' : '#2563eb',
+                color: '#fff',
+                fontWeight: 600,
+                cursor: (!preview && !linkedUsername) ? 'not-allowed' : 'pointer',
+                margin: 0
+              }}
+            >
+              {preview ? 'Save Linked Company' : 'Done'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCompanyLinkPreview(null);
+                setCompanyLinkMsg('');
+                setCompanyLinkInput('');
+                setHeroUpdates({});
+                setActiveEditor('default');
+              }}
+              style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCompanyEditor = () => {
+    if (!isCompany) {
+      return renderFounderLinkCompanyEditor();
+    }
+
     const compName = heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || '');
     const compWeb = heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || '');
     const foundYr = heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || '');
@@ -994,10 +1279,9 @@ export default function ProfileGeneralDashboard(props) {
         {renderEditorHeader("Company & Venture", "showCompany")}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Company Image / Logo */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
-              {isCompany ? 'Company & Venture Image' : 'Company Image / Banner'}
+              Company & Venture Image
             </label>
             {compImg && (
               <div style={{
@@ -1058,29 +1342,14 @@ export default function ProfileGeneralDashboard(props) {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  // Company images: upload as-is (auto-fit). Founder banner still uses crop.
-                  if (isCompany) {
-                    e.target.value = '';
-                    if (handleUploadField) handleUploadField('companyImage', file);
-                    return;
-                  }
-                  if (handlePickAndCrop) {
-                    handlePickAndCrop(e, 16 / 9, async (croppedFile) => {
-                      if (handleUploadField) {
-                        await handleUploadField('companyImage', croppedFile);
-                      }
-                    });
-                  } else if (handleUploadField) {
-                    handleUploadField('companyImage', file);
-                  }
+                  e.target.value = '';
+                  if (handleUploadField) handleUploadField('companyImage', file);
                 }}
               />
             </label>
-            {isCompany && (
-              <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                Separate from the top logo. Uploads as-is with auto-fit — no crop step.
-              </p>
-            )}
+            <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+              Separate from the top logo. Uploads as-is with auto-fit — no crop step.
+            </p>
           </div>
 
           <div>
@@ -1328,6 +1597,246 @@ export default function ProfileGeneralDashboard(props) {
     const rawMilestones = heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []);
     const milestones = Array.isArray(rawMilestones) ? rawMilestones : [];
 
+    const handleRemoveMilestone = (idxToRemove) => {
+      const updated = milestones.filter((_, i) => i !== idxToRemove);
+      setHeroUpdates(prev => ({ ...prev, milestones: updated }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+    };
+
+    // Company profiles: Trusted By = linked client company Nano profiles
+    if (isCompany) {
+      const handleAddTrustedCompany = async () => {
+        const clean = extractNanoUsername(trustedCompanyInput);
+        if (!clean) {
+          setTrustedCompanyMsg('Enter a company Nano username that already exists.');
+          return;
+        }
+        const already = milestones.some((m) =>
+          extractNanoUsername(m.nanoUsername || m.username || '') === clean
+        );
+        if (already) {
+          setTrustedCompanyMsg(`@${clean} is already in Trusted By.`);
+          return;
+        }
+        setIsAddingTrustedCompany(true);
+        setTrustedCompanyMsg(`Looking up @${clean}...`);
+        try {
+          // Strict DB lookup only — must exist as company in general-profile API
+          const res = await generalProfileAPI.getByUsername(clean);
+          const data = res?.success === false ? null : res?.data;
+          if (!data || !data.username) {
+            setTrustedCompanyMsg(`@${clean} is not in the database. Only existing company profiles can be added.`);
+            return;
+          }
+          if (String(data.profileType || '').toLowerCase() !== 'company') {
+            setTrustedCompanyMsg(`@${clean} exists but is not a company profile. Enter a company username.`);
+            return;
+          }
+          const name = (data.companyName || data.name || '').replace(/\|/g, ' ').trim() || `@${clean}`;
+          const photo = data.photo || data.companyImage || '';
+          const uname = String(data.username || clean).toLowerCase().trim();
+          const updated = [...milestones, {
+            label: name,
+            name,
+            photo,
+            username: uname,
+            nanoUsername: uname,
+            profileType: 'company'
+          }];
+          setHeroUpdates(prev => ({ ...prev, milestones: updated }));
+          setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+          setTrustedCompanyInput('');
+          setTrustedCompanyMsg('');
+        } catch (_) {
+          setTrustedCompanyMsg(`@${clean} is not in the database. Only existing company profiles can be added.`);
+        } finally {
+          setIsAddingTrustedCompany(false);
+        }
+      };
+
+      return (
+        <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+          {renderEditorHeader('Trusted By', 'showMilestones')}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Add client company</h5>
+              <p style={{ margin: '0 0 0.85rem 0', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.4 }}>
+                Enter an existing Nano company username. Only profiles already in the database can be added — their name and logo will show in Trusted By.
+              </p>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', width: '100%' }}>
+                <div style={{ display: 'flex', flex: 1, minWidth: 0, height: '44px', alignItems: 'center' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 0.9rem',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRight: 'none',
+                    borderRadius: '8px 0 0 8px',
+                    color: '#64748b',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    userSelect: 'none',
+                    height: '100%'
+                  }}>@</span>
+                  <input
+                    type="text"
+                    value={trustedCompanyInput}
+                    onChange={(e) => setTrustedCompanyInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTrustedCompany(); } }}
+                    placeholder="client_company_username"
+                    disabled={isAddingTrustedCompany}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      height: '100%',
+                      padding: '0 0.9rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '0 8px 8px 0',
+                      outline: 'none',
+                      fontSize: '0.95rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddTrustedCompany}
+                  disabled={isAddingTrustedCompany || !trustedCompanyInput.trim()}
+                  style={{
+                    height: '44px',
+                    padding: '0 1.1rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: isAddingTrustedCompany || !trustedCompanyInput.trim() ? '#94a3b8' : '#0f172a',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: isAddingTrustedCompany || !trustedCompanyInput.trim() ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {isAddingTrustedCompany ? 'Fetching...' : 'Add'}
+                </button>
+              </div>
+              {trustedCompanyMsg && (
+                <p style={{
+                  margin: '0.65rem 0 0',
+                  fontSize: '0.8rem',
+                  color: /not in the database|not a company|already|enter a company|exists but/i.test(trustedCompanyMsg) ? '#dc2626' : '#2563eb'
+                }}>
+                  {trustedCompanyMsg}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+                Trusted By ({milestones.length})
+              </label>
+              {milestones.length === 0 ? (
+                <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
+                  No client companies added yet. Link company profiles above.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {milestones.map((m, idx) => {
+                    const uname = extractNanoUsername(m.nanoUsername || m.username || '');
+                    const displayName = (m.name || m.label || (uname ? `@${uname}` : 'Company')).replace(/\|/g, ' ').trim();
+                    return (
+                      <div key={`${uname || 't'}-${idx}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '8px',
+                            background: '#f1f5f9',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            {m.photo ? (
+                              <img src={m.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <span style={{ fontWeight: 800, color: '#64748b' }}>{displayName.charAt(0).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>{displayName}</div>
+                            {uname ? (
+                              <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600 }}>@{uname}</div>
+                            ) : (
+                              <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Legacy text — remove and re-add as a company profile</div>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMilestone(idx)}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', fontSize: '1.1rem', lineHeight: 1 }}
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {renderMobileToggle('showMilestones')}
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const toSave = milestones.map((m) => {
+                    const uname = extractNanoUsername(m.nanoUsername || m.username || '');
+                    if (uname) {
+                      return {
+                        label: m.name || m.label || `@${uname}`,
+                        name: m.name || m.label || `@${uname}`,
+                        photo: m.photo || '',
+                        username: uname,
+                        nanoUsername: uname,
+                        profileType: 'company'
+                      };
+                    }
+                    return { label: m.label || m.name || '' };
+                  });
+                  setHeroUpdates((prev) => ({ ...prev, milestones: toSave }));
+                  handleUpdateHeroField('milestones', toSave).then(() => {
+                    setActiveEditor('default');
+                  });
+                }}
+                style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+              >
+                Save Trusted By
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTrustedCompanyInput('');
+                  setTrustedCompanyMsg('');
+                  setHeroUpdates({});
+                  setActiveEditor('default');
+                }}
+                style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 600, cursor: 'pointer', margin: 0 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Founder: free-text traction milestones
     const handleAddMilestone = () => {
       const text = newMilestoneText.trim();
       if (!text) return;
@@ -1337,18 +1846,14 @@ export default function ProfileGeneralDashboard(props) {
       setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
     };
 
-    const handleRemoveMilestone = (idxToRemove) => {
-      const updated = milestones.filter((_, i) => i !== idxToRemove);
-      setHeroUpdates(prev => ({ ...prev, milestones: updated }));
-      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
-    };
-
     return (
       <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        {renderEditorHeader("Traction & Milestones", "showMilestones")}
+        {renderEditorHeader('Traction & Milestones', 'showMilestones')}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Add Milestone / Achievement</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+              Add Milestone / Achievement
+            </label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
@@ -1368,7 +1873,9 @@ export default function ProfileGeneralDashboard(props) {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Current Milestones ({milestones.length})</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+              Current Milestones ({milestones.length})
+            </label>
             {milestones.length === 0 ? (
               <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
                 No milestones added yet. Add key traction metrics above.
@@ -1391,7 +1898,7 @@ export default function ProfileGeneralDashboard(props) {
             )}
           </div>
 
-          {renderMobileToggle("showMilestones")}
+          {renderMobileToggle('showMilestones')}
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button
@@ -1753,9 +2260,9 @@ export default function ProfileGeneralDashboard(props) {
             Founder &amp; Venture Controls
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-            {renderQuickAccessButton('company', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>, "Company & Venture", "showCompany", "Startup name, website, and founding year")}
+            {renderQuickAccessButton('company', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>, isCompany ? "Company & Venture" : "Link Company", "showCompany", isCompany ? "Startup name, website, and founding year" : "Link your Nano company profile by username")}
             
-            {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, "Traction & Milestones", "showMilestones", "Key achievements, funds raised, and user growth badges")}
+            {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, isCompany ? "Trusted By" : "Traction & Milestones", "showMilestones", isCompany ? "Link client company Nano profiles you have served" : "Key achievements, funds raised, and user growth badges")}
             
             {renderQuickAccessButton('team', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, "Leadership & Team", "showCoFounders", "Co-founders and team member Nano profiles")}
           </div>

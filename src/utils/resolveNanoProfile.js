@@ -12,13 +12,17 @@ export function extractNanoUsername(raw) {
 function mapGeneralData(d, fallbackUsername) {
   const type = d.profileType || 'general';
   const username = (d.username || fallbackUsername).toLowerCase();
+  const displayName = (d.companyName || d.name || '').replace(/\|/g, ' ').trim() || `@${username}`;
   return {
-    name: (d.name || '').replace(/\|/g, ' ').trim() || `@${username}`,
+    name: displayName,
     role:
       d.title ||
       d.experience ||
-      (type === 'founder' ? 'Founder' : type === 'artist' ? 'Artist' : 'Team Member'),
-    photo: d.photo || '',
+      (type === 'founder' ? 'Founder' : type === 'company' ? 'Company' : type === 'artist' ? 'Artist' : 'Team Member'),
+    photo: d.photo || d.companyImage || '',
+    companyName: (d.companyName || '').trim(),
+    companyImage: d.companyImage || '',
+    foundingYear: d.foundingYear || '',
     profileType: type,
     username,
     artistId: type === 'artist' ? username : undefined

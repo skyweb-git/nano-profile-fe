@@ -11,6 +11,7 @@ import './GeneralProfileView.css';
 import { useShowcaseEmbedHeight } from '../hooks/useShowcaseEmbedHeight';
 import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
 import { sanitizeBioHtml, isRichBioHtml, bioToPlainText } from '../utils/sanitizeBioHtml';
+import { extractNanoUsername, resolveNanoProfile } from '../utils/resolveNanoProfile';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -103,9 +104,46 @@ function GeneralProfileView() {
   const [showProfileFallback, setShowProfileFallback] = useState(false);
   const [success, setSuccess] = useState('');
   const [showCompanyView, setShowCompanyView] = useState(false);
+  const [linkedCompanyLive, setLinkedCompanyLive] = useState(null);
   const liveTeamMembers = useLiveTeamMembers(profile?.coFounders || []);
+  const trustedByList = useLiveTeamMembers(
+    (profile?.profileType === 'company' ? (profile?.milestones || []) : []).map((m) => ({
+      ...m,
+      nanoUsername: m.nanoUsername || m.username || '',
+      username: m.username || m.nanoUsername || '',
+      name: m.name || m.label || '',
+      photo: m.photo || '',
+      profileType: m.profileType || 'company'
+    }))
+  );
 
   useShowcaseEmbedHeight(isEmbed);
+
+  // Live-resolve linked company profile for founder tile
+  useEffect(() => {
+    let cancelled = false;
+    const uname = extractNanoUsername(profile?.linkedCompanyUsername || '');
+    if (!uname || profile?.profileType === 'company') {
+      setLinkedCompanyLive(null);
+      return undefined;
+    }
+    setLinkedCompanyLive({
+      username: uname,
+      name: (profile?.companyName || '').replace(/\|/g, ' ').trim() || `@${uname}`,
+      photo: profile?.companyImage || ''
+    });
+    (async () => {
+      const live = await resolveNanoProfile(uname, 'company');
+      if (cancelled || !live) return;
+      if (live.profileType && live.profileType !== 'company') return;
+      setLinkedCompanyLive({
+        username: live.username || uname,
+        name: live.companyName || live.name || `@${uname}`,
+        photo: live.photo || live.companyImage || ''
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.linkedCompanyUsername, profile?.companyName, profile?.companyImage, profile?.profileType]);
 
   const closeCompanyView = useCallback(() => {
     setShowCompanyView(false);
@@ -331,11 +369,7 @@ function GeneralProfileView() {
           companyWebsite: 'https://skywebdev.xyz',
           companyDescription: 'Skyweb builds modern digital products, SaaS platforms, and smart identity experiences for growing brands.',
           foundingYear: '2025',
-          milestones: [
-            { label: 'Product Platforms Shipped' },
-            { label: 'Enterprise & Startup Clients' },
-            { label: 'Full-Stack Delivery' }
-          ],
+          milestones: [],
           coFounders: [],
           showCompany: true,
           showPitchDeck: false,
@@ -414,6 +448,20 @@ function GeneralProfileView() {
   }, [username, isMock]);
 
   const handleOpenCompanyView = async () => {
+    // Dashboard preview iframe: open Company & Venture / Link Company editor
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'company' }, '*');
+      return;
+    }
+
+    // Founder with linked company → navigate to that company profile
+    const linked = extractNanoUsername(profile?.linkedCompanyUsername || linkedCompanyLive?.username || '');
+    if (linked && profile?.profileType !== 'company') {
+      navigate(`/company/${linked}`);
+      return;
+    }
+
+    // Company profile (or legacy founder details) → in-page Company & Venture overlay
     setShowCompanyView(true);
     try {
       if (window.location.hash !== '#company') {
@@ -1567,71 +1615,160 @@ function GeneralProfileView() {
               </div>
             )}
 
-            {/* Founder Company */}
-            {isFounder && (profile.companyName || profile.foundingYear || isPreview) && (
+            {/* Founder linked company tile */}
+            {!isCompany && isFounder && profile.showCompany !== false && (
+              (linkedCompanyLive?.username || profile.linkedCompanyUsername || (isPreview && !profile.linkedCompanyUsername))
+            ) && (
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {(profile.companyName || isPreview) && profile.showCompany !== false && (
-                  <div
-                    className="founder-company-card"
-                    onClick={handleOpenCompanyView}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '14px',
-                      background: 'rgba(10,10,10,0.04)',
-                      border: '1px solid rgba(10,10,10,0.08)',
+                <div
+                  className="founder-company-card"
+                  onClick={handleOpenCompanyView}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '14px',
+                    background: 'rgba(10,10,10,0.04)',
+                    border: '1px solid rgba(10,10,10,0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    minHeight: '76px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.borderColor = 'rgba(200,0,26,0.3)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = 'rgba(10,10,10,0.08)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      background: 'rgba(10,10,10,0.06)',
+                      flexShrink: 0,
                       display: 'flex',
-                      alignItems: 'stretch',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      minHeight: '76px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.borderColor = 'rgba(200,0,26,0.3)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = 'rgba(10,10,10,0.08)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.3 }}>
-                        {profile.companyName || (isPreview ? 'Click to View Company Details' : 'Company')}
-                      </span>
-                      {(profile.foundingYear || isPreview) && (
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>
-                          <span>Est. {profile.foundingYear || '2024'}</span>
-                        </div>
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {(linkedCompanyLive?.photo || profile.companyImage) ? (
+                        <img
+                          src={fixImageUrl(linkedCompanyLive?.photo || profile.companyImage)}
+                          alt=""
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 800, color: 'var(--muted)', fontSize: '1rem' }}>
+                          {((linkedCompanyLive?.name || profile.companyName || 'C').charAt(0) || 'C').toUpperCase()}
+                        </span>
                       )}
                     </div>
-                    <div
-                      style={{
-                        width: '30px',
-                        height: '30px',
-                        borderRadius: '50%',
-                        background: 'rgba(200,0,26,0.06)',
-                        color: 'var(--red)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        alignSelf: 'flex-end',
-                        marginTop: 'auto',
-                        marginLeft: '12px',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                      </svg>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                        {linkedCompanyLive?.name
+                          || profile.companyName
+                          || (isPreview ? 'Link your company profile' : 'Company')}
+                      </span>
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>
+                        <span>
+                          @{(linkedCompanyLive?.username || profile.linkedCompanyUsername || (isPreview ? 'company_username' : 'company'))}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                )}
+                  <div
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      background: 'rgba(200,0,26,0.06)',
+                      color: 'var(--red)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Company profile — Company & Venture tile (name + Est. year → overlay) */}
+            {isCompany && profile.showCompany !== false && (profile.companyName || profile.foundingYear || isPreview) && (
+              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div
+                  className="founder-company-card"
+                  onClick={handleOpenCompanyView}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '14px',
+                    background: 'rgba(10,10,10,0.04)',
+                    border: '1px solid rgba(10,10,10,0.08)',
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    minHeight: '76px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.borderColor = 'rgba(200,0,26,0.3)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = 'rgba(10,10,10,0.08)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '8px', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                      {profile.companyName || (isPreview ? 'Click to View Company Details' : 'Company')}
+                    </span>
+                    {(profile.foundingYear || isPreview) && (
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>
+                        <span>Est. {profile.foundingYear || '2024'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      background: 'rgba(200,0,26,0.06)',
+                      color: 'var(--red)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      alignSelf: 'flex-end',
+                      marginTop: 'auto',
+                      marginLeft: '12px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1716,8 +1853,117 @@ function GeneralProfileView() {
         )}
         {showAboutEffectively && (cleanBioPlain || isPreview) && <div className="divider"></div>}
 
-        {/* FOUNDER MILESTONES & TRACTION */}
-        {isFounder && profile.showMilestones !== false && (((profile.milestones || []).length > 0) || isPreview) && (
+        {/* COMPANY: Trusted By (linked client company profiles) */}
+        {isCompany && profile.showMilestones !== false && (
+          ((profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) || isPreview)
+        ) && (
+          <>
+            <section className="section founder-milestones-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+              <div className="section-head" style={{ marginBottom: '16px' }}>
+                <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRUSTED BY</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) ? (
+                  (trustedByList.length ? trustedByList : profile.milestones)
+                    .filter((m) => extractNanoUsername(m?.nanoUsername || m?.username || ''))
+                    .map((m, idx) => {
+                      const uname = extractNanoUsername(m.nanoUsername || m.username || '');
+                      const displayName = (m.name || m.label || `@${uname}`).replace(/\|/g, ' ').trim();
+                      const companyUrl = `/company/${uname}`;
+                      const handleClick = (e) => {
+                        if (isPreview) {
+                          e.preventDefault();
+                          window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'milestones' }, '*');
+                          return;
+                        }
+                        if (window.self !== window.top) {
+                          e.preventDefault();
+                          window.open(companyUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      };
+                      return (
+                        <a
+                          key={`${uname}-${idx}`}
+                          href={isPreview ? undefined : companyUrl}
+                          onClick={handleClick}
+                          target={isPreview ? undefined : '_blank'}
+                          rel={isPreview ? undefined : 'noopener noreferrer'}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            borderRadius: '14px',
+                            background: 'rgba(10,10,10,0.04)',
+                            border: '1px solid rgba(10,10,10,0.08)',
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                            <div style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '10px',
+                              overflow: 'hidden',
+                              background: 'rgba(10,10,10,0.06)',
+                              flexShrink: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {m.photo ? (
+                                <img src={fixImageUrl(m.photo) || m.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <span style={{ fontWeight: 800, color: 'var(--muted)', fontSize: '1rem' }}>
+                                  {displayName.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.03em', lineHeight: 1.3 }}>
+                                {displayName}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>
+                                @{uname}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: 'rgba(200,0,26,0.06)',
+                            color: 'var(--red)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="5" y1="12" x2="19" y2="12"></line>
+                              <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                          </div>
+                        </a>
+                      );
+                    })
+                ) : (
+                  <div style={{ padding: '8px 16px', borderRadius: '6px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
+                    + Click to add client company profiles
+                  </div>
+                )}
+              </div>
+            </section>
+            <div className="divider"></div>
+          </>
+        )}
+
+        {/* FOUNDER: Traction & Milestones */}
+        {!isCompany && isFounder && profile.showMilestones !== false && (((profile.milestones || []).length > 0) || isPreview) && (
           <>
             <section className="section founder-milestones-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>

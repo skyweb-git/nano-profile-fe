@@ -172,19 +172,21 @@ export default function ProfileFounderOnboardingWizard({
                 />
               </div>
 
-              <div className="onboarding-field">
-                <label>Company / Startup Name</label>
-                <input
-                  type="text"
-                  className="onboarding-input"
-                  value={formData.companyName || ''}
-                  onChange={e => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-                  placeholder="e.g. Acme Innovations"
-                />
-              </div>
+              {isCompanyProfile && (
+                <div className="onboarding-field">
+                  <label>Company / Startup Name</label>
+                  <input
+                    type="text"
+                    className="onboarding-input"
+                    value={formData.companyName || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                    placeholder="e.g. Acme Innovations"
+                  />
+                </div>
+              )}
 
               <div className="onboarding-field">
-                <label>Founder Role / Experience</label>
+                <label>{isCompanyProfile ? 'Company Type / Focus' : 'Founder Role / Experience'}</label>
                 <input
                   type="text"
                   className="onboarding-input"
