@@ -163,7 +163,7 @@ export default function ProfileFounderController(props) {
               ? 'A technology company building scalable digital products, cloud platforms, and modern web experiences for businesses that want to grow faster.'
               : 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.'),
             email: user?.email || data.email || '',
-            photo: data.photo || (isCompanyProfile ? '' : `${base}/indian_general_avatar.png`),
+            photo: data.photo || `${base}/indian_general_avatar.png`,
             photoAspect: data.photoAspect === 'landscape' ? 'landscape' : 'portrait',
             banner: data.banner || `${base}/mock_art_folk.png`,
             theme: 'custom-theme',
@@ -703,8 +703,8 @@ export default function ProfileFounderController(props) {
         bio: formData.bio || '',
         email: formData.email || user?.email || '',
         phone: formData.phone || '',
-        photo: isCompanyProfile ? '' : initialPhoto,
-        companyImage: isCompanyProfile ? initialPhoto : (formData.companyImage || ''),
+        photo: initialPhoto,
+        companyImage: formData.companyImage || '',
         photoAspect: isCompanyProfile && photoAspect === 'landscape' ? 'landscape' : 'portrait',
         theme: 'custom-theme', // Artist profile signature colors!
         font: 'outfit',
@@ -808,7 +808,7 @@ export default function ProfileFounderController(props) {
           ? 'A technology company building scalable digital products, cloud platforms, and modern web experiences for businesses that want to grow faster.'
           : 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.',
         email: user?.email || '',
-        photo: isCompanyProfile ? '' : `${base}/indian_general_avatar.png`,
+        photo: `${base}/indian_general_avatar.png`,
         photoAspect: 'portrait',
         banner: `${base}/mock_art_folk.png`,
         theme: 'custom-theme',

@@ -702,85 +702,32 @@ export default function ProfileGeneralDashboard(props) {
     </div>
   );
 
-  const renderPhotoEditor = () => {
-    const photoAspect = (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
-      ? 'landscape'
-      : 'portrait';
-    const cropAspect = photoAspect === 'landscape' ? (16 / 9) : 1;
-    const setPhotoAspect = (next) => {
-      setHeroUpdates(prev => ({ ...prev, photoAspect: next }));
-      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, photoAspect: next } : a));
-      if (handleUpdateHeroField) handleUpdateHeroField('photoAspect', next);
-    };
-
-    return (
+  const renderPhotoEditor = () => (
     <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-      {renderEditorHeader(isCompany ? "Company Logo" : "Upload Profile Images", "showPhoto")}
+      {renderEditorHeader("Upload Profile Images", "showPhoto")}
       
-      {isCompany && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          <h4 style={{ color: '#475569', fontSize: '0.9rem', margin: '0 0 0.75rem 0' }}>Image layout</h4>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
-            {[
-              { id: 'portrait', label: 'Portrait', hint: 'Tall frame' },
-              { id: 'landscape', label: 'Landscape', hint: 'Wide banner' }
-            ].map(opt => {
-              const active = photoAspect === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setPhotoAspect(opt.id)}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem 0.85rem',
-                    borderRadius: '10px',
-                    border: active ? '2px solid #0f172a' : '1px solid #cbd5e1',
-                    background: active ? '#0f172a' : '#ffffff',
-                    color: active ? '#ffffff' : '#334155',
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{opt.label}</div>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.75, marginTop: 2 }}>{opt.hint}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Avatar / Company Logo */}
+      {/* Main profile photo (top of public profile) */}
       <div style={{ marginBottom: '1rem' }}>
-        <h4 style={{ color: '#475569', fontSize: '1rem', margin: '0 0 1rem 0' }}>{isCompany ? 'Company Logo' : 'Profile Avatar'}</h4>
+        <h4 style={{ color: '#475569', fontSize: '1rem', margin: '0 0 1rem 0' }}>Profile Avatar</h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ 
-            width: isCompany ? (photoAspect === 'landscape' ? '140px' : '96px') : '80px', 
-            height: isCompany ? (photoAspect === 'landscape' ? '80px' : '120px') : '80px', 
-            borderRadius: isCompany ? '10px' : '50%', 
+            width: '80px', 
+            height: '80px', 
+            borderRadius: '50%', 
             overflow: 'hidden', 
             background: '#e2e8f0', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            position: 'relative',
-            border: isCompany ? '1px solid #cbd5e1' : 'none',
-            flexShrink: 0
+            position: 'relative'
           }}>
-            {(isCompany ? artist?.companyImage : artist?.photo) ? (
-              <img
-                src={isCompany ? artist.companyImage : artist.photo}
-                alt={isCompany ? 'Company logo' : 'Avatar'}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+            {artist?.photo ? (
+              <img src={artist.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span style={{ fontSize: isCompany ? '0.75rem' : '2rem', color: '#64748b', textAlign: 'center', padding: '0 6px' }}>
-                {isCompany ? 'Logo' : avatarLetter}
-              </span>
+              <span style={{ fontSize: '2rem', color: '#64748b' }}>{avatarLetter}</span>
             )}
             
-            {(isUploading === 'photo' || isUploading === 'companyImage') && (
+            {isUploading === 'photo' && (
               <div style={{
                 position: 'absolute',
                 top: 0,
@@ -809,37 +756,31 @@ export default function ProfileGeneralDashboard(props) {
             )}
           </div>
           <label style={{ 
-            background: (isUploading === 'photo' || isUploading === 'companyImage') ? '#94a3b8' : '#2563eb', 
+            background: isUploading === 'photo' ? '#94a3b8' : '#2563eb', 
             color: '#fff', 
             padding: '0.6rem 1.2rem', 
             borderRadius: '8px', 
             fontWeight: 600, 
-            cursor: (isUploading === 'photo' || isUploading === 'companyImage') ? 'not-allowed' : 'pointer', 
+            cursor: isUploading === 'photo' ? 'not-allowed' : 'pointer', 
             fontSize: '0.85rem',
-            pointerEvents: (isUploading === 'photo' || isUploading === 'companyImage') ? 'none' : 'auto',
+            pointerEvents: isUploading === 'photo' ? 'none' : 'auto',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            {(isUploading === 'photo' || isUploading === 'companyImage')
-              ? 'Uploading...'
-              : (isCompany ? 'Upload Company Logo' : 'Choose New Avatar')}
+            {isUploading === 'photo' ? 'Uploading...' : 'Choose New Avatar'}
             <input
               type="file"
               accept="image/*"
               style={{ display: 'none' }}
-              disabled={isUploading === 'photo' || isUploading === 'companyImage'}
-              onChange={(e) => handlePickAndCrop(
-                e,
-                cropAspect,
-                (file) => handleUploadField(isCompany ? 'companyImage' : 'photo', file)
-              )}
+              disabled={isUploading === 'photo'}
+              onChange={(e) => handlePickAndCrop(e, 1, (file) => handleUploadField('photo', file))}
             />
           </label>
         </div>
         {isCompany && (
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            Use your company logo here — not a personal photo. The top profile image stays the same; portrait/landscape only changes the company details view.
+            This is the main image at the top of your profile. Company & Venture has its own separate image.
           </p>
         )}
       </div>
@@ -852,8 +793,7 @@ export default function ProfileGeneralDashboard(props) {
         Done
       </button>
     </div>
-    );
-  };
+  );
 
   const renderAboutEditor = () => (
     <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
@@ -1036,7 +976,7 @@ export default function ProfileGeneralDashboard(props) {
           {/* Company Image / Logo */}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
-              {isCompany ? 'Company Logo' : 'Company Image / Banner'}
+              {isCompany ? 'Company Image (Company & Venture only)' : 'Company Image / Banner'}
             </label>
             {isCompany && (
               <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.75rem' }}>
@@ -1117,7 +1057,7 @@ export default function ProfileGeneralDashboard(props) {
             }}>
               {isUploading === 'companyImage'
                 ? 'Uploading Image...'
-                : (compImg ? (isCompany ? 'Change Company Logo' : 'Change Company Image') : (isCompany ? '+ Upload Company Logo' : '+ Upload Company Image'))}
+                : (compImg ? 'Change Company Image' : '+ Upload Company Image')}
               <input
                 type="file"
                 accept="image/*"
@@ -1144,6 +1084,11 @@ export default function ProfileGeneralDashboard(props) {
                 }}
               />
             </label>
+            {isCompany && (
+              <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                Only used in Company & Venture details — does not change the main top profile image.
+              </p>
+            )}
           </div>
 
           <div>
@@ -1831,7 +1776,7 @@ export default function ProfileGeneralDashboard(props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
           {renderQuickAccessButton('name', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, "Edit Name", "showName", "Change your public display name")}
           
-          {renderQuickAccessButton('photo', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>, isCompany ? "Company Logo" : "Profile Image", "showPhoto", isCompany ? "Upload your company logo (portrait or landscape)" : "Upload and toggle your profile photo")}
+          {renderQuickAccessButton('photo', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>, "Profile Image", "showPhoto", "Upload and toggle your profile photo")}
           
           {renderQuickAccessButton('location', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, "Location", "showLocation", "Update city and state visibility")}
           
@@ -2060,7 +2005,7 @@ export default function ProfileGeneralDashboard(props) {
                   <div className="skb" style={{ width: 110, height: 28 }} />
                   <div className="skb" style={{ width: 80, height: 16 }} />
                 </div>
-                <div className="skb" style={{ width: '100%', aspectRatio: isCompany && artist?.photoAspect === 'landscape' ? '16/9' : '1/1', maxHeight: isCompany && artist?.photoAspect === 'landscape' ? '240px' : '380px', borderRadius: 2 }} />
+                <div className="skb" style={{ width: '100%', aspectRatio: '1/1', maxHeight: '380px', borderRadius: 2 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px 0' }}>
                   <div className="skb-red" style={{ width: 120, height: 12 }} />
                   <div className="skb" style={{ width: '80%', height: 48 }} />
