@@ -1608,10 +1608,13 @@ export default function ProfileGeneralDashboard(props) {
     const rawMilestones = heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []);
     const milestones = Array.isArray(rawMilestones) ? rawMilestones : [];
 
-    const handleRemoveMilestone = (idxToRemove) => {
+    const handleRemoveMilestone = async (idxToRemove) => {
       const updated = milestones.filter((_, i) => i !== idxToRemove);
       setHeroUpdates(prev => ({ ...prev, milestones: updated }));
       setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+      if (isCompany) {
+        await handleUpdateHeroField('milestones', updated, { showMilestones: true });
+      }
     };
 
     // Company profiles: Trusted By = linked client company Nano profiles
@@ -1654,10 +1657,12 @@ export default function ProfileGeneralDashboard(props) {
             nanoUsername: uname,
             profileType: 'company'
           }];
-          setHeroUpdates(prev => ({ ...prev, milestones: updated }));
-          setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated } : a));
+          setHeroUpdates(prev => ({ ...prev, milestones: updated, showMilestones: true }));
+          setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated, showMilestones: true } : a));
           setTrustedCompanyInput('');
-          setTrustedCompanyMsg('');
+          setTrustedCompanyMsg('Saving…');
+          const ok = await handleUpdateHeroField('milestones', updated, { showMilestones: true });
+          setTrustedCompanyMsg(ok ? '' : 'Added locally but save failed. Click Save Trusted By to retry.');
         } catch (_) {
           setTrustedCompanyMsg(`@${clean} is not in the database. Only existing company profiles can be added.`);
         } finally {
@@ -1805,7 +1810,7 @@ export default function ProfileGeneralDashboard(props) {
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const toSave = milestones.map((m) => {
                     const uname = extractNanoUsername(m.nanoUsername || m.username || '');
                     if (uname) {
@@ -1820,10 +1825,12 @@ export default function ProfileGeneralDashboard(props) {
                     }
                     return { label: m.label || m.name || '' };
                   });
-                  setHeroUpdates((prev) => ({ ...prev, milestones: toSave }));
-                  handleUpdateHeroField('milestones', toSave).then(() => {
+                  setHeroUpdates((prev) => ({ ...prev, milestones: toSave, showMilestones: true }));
+                  const ok = await handleUpdateHeroField('milestones', toSave, { showMilestones: true });
+                  if (ok) {
+                    setHeroUpdates({});
                     setActiveEditor('default');
-                  });
+                  }
                 }}
                 style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
               >
@@ -1973,22 +1980,27 @@ export default function ProfileGeneralDashboard(props) {
 
       const updated = [...coFounders, {
         name: live.name,
-        role: live.role,
-        photo: live.photo,
+        role: live.role || 'Team Member',
+        photo: live.photo || '',
         nanoUsername: cleanNano,
         username: cleanNano,
-        artistId: live.profileType === 'artist' ? cleanNano : undefined,
-        profileType: live.profileType
+        artistId: live.profileType === 'artist' ? cleanNano : '',
+        profileType: live.profileType || 'general'
       }];
-      setHeroUpdates(prev => ({ ...prev, coFounders: updated }));
+      setHeroUpdates(prev => ({ ...prev, coFounders: updated, showCoFounders: true }));
       setNewMemberUsername('');
-      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, coFounders: updated } : a));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, coFounders: updated, showCoFounders: true } : a));
+      // Persist immediately so members aren't lost if Save isn't clicked
+      setMemberFetchMsg('Saving…');
+      const ok = await handleUpdateHeroField('coFounders', updated, { showCoFounders: true });
+      setMemberFetchMsg(ok ? '' : 'Added locally but save failed. Click Save Team to retry.');
     };
 
-    const handleRemoveMember = (idxToRemove) => {
+    const handleRemoveMember = async (idxToRemove) => {
       const updated = coFounders.filter((_, i) => i !== idxToRemove);
       setHeroUpdates(prev => ({ ...prev, coFounders: updated }));
       setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, coFounders: updated } : a));
+      await handleUpdateHeroField('coFounders', updated, { showCoFounders: true });
     };
 
     return (
@@ -2158,22 +2170,32 @@ export default function ProfileGeneralDashboard(props) {
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button
-              onClick={() => {
-                const toSave = (liveCoFounders.length ? liveCoFounders : coFounders).map((cf) => ({
-                  name: cf.name || '',
-                  role: cf.role || 'Team Member',
-                  photo: cf.photo || '',
-                  nanoUsername: extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || ''),
-                  username: extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || ''),
-                  artistId: cf.profileType === 'artist'
-                    ? extractNanoUsername(cf.artistId || cf.nanoUsername || cf.username || '')
-                    : undefined,
-                  profileType: cf.profileType || (cf.artistId ? 'artist' : 'general')
-                }));
-                setHeroUpdates((prev) => ({ ...prev, coFounders: toSave, showCoFounders: true }));
-                handleUpdateHeroField('coFounders', toSave, { showCoFounders: true }).then(() => {
-                  setActiveEditor('default');
+              onClick={async () => {
+                const liveByUser = new Map(
+                  (liveCoFounders || []).map((cf) => [
+                    extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || ''),
+                    cf
+                  ])
+                );
+                const toSave = coFounders.map((cf) => {
+                  const uname = extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || '');
+                  const live = liveByUser.get(uname);
+                  return {
+                    name: (live?.name || cf.name || '').replace(/\|/g, ' ').trim() || (uname ? `@${uname}` : 'Team Member'),
+                    role: (live?.role || cf.role || 'Team Member').replace(/\|/g, ' ').trim(),
+                    photo: live?.photo || cf.photo || '',
+                    nanoUsername: uname,
+                    username: uname,
+                    artistId: (live?.profileType || cf.profileType) === 'artist' ? uname : '',
+                    profileType: live?.profileType || cf.profileType || (cf.artistId ? 'artist' : 'general')
+                  };
                 });
+                setHeroUpdates((prev) => ({ ...prev, coFounders: toSave, showCoFounders: true }));
+                const ok = await handleUpdateHeroField('coFounders', toSave, { showCoFounders: true });
+                if (ok) {
+                  setHeroUpdates({});
+                  setActiveEditor('default');
+                }
               }}
               style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: 'pointer', margin: 0 }}
             >

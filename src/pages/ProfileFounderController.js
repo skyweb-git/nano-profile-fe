@@ -35,15 +35,20 @@ const mapFounderProfileToArtistFormat = (data, profileType = 'founder') => {
     pitchDeckPdf: '',
     ctaLabel: '',
     ctaUrl: '',
-    milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : (isCompany ? [] : [
-      { label: '$1.2M Seed Raised' },
-      { label: '50K+ Active Users' },
-      { label: 'Top 5 Product Hunt' }
-    ]),
-    coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : (isCompany ? [] : [
-      { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
-      { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
-    ]),
+    // Use real DB arrays as-is (including empty) so saves are never overwritten by fake defaults
+    milestones: Array.isArray(data.milestones)
+      ? data.milestones
+      : (isCompany ? [] : [
+          { label: '$1.2M Seed Raised' },
+          { label: '50K+ Active Users' },
+          { label: 'Top 5 Product Hunt' }
+        ]),
+    coFounders: Array.isArray(data.coFounders)
+      ? data.coFounders
+      : (isCompany ? [] : [
+          { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
+          { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
+        ]),
     showCompany: data.showCompany !== false,
     showPitchDeck: false,
     showCoFounders: data.showCoFounders !== false,
@@ -423,7 +428,15 @@ export default function ProfileFounderController(props) {
         throw new Error(res.message || 'The server rejected this update.');
       }
 
-      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data, profileType) : a));
+      setMyArtists(prev => prev.map((a, j) => {
+        if (j !== 0) return a;
+        const mapped = mapFounderProfileToArtistFormat(res.data, profileType) || {};
+        // Keep the links we just wrote if response is missing them
+        if (Array.isArray(updatedLinks)) {
+          mapped.links = updatedLinks;
+        }
+        return mapped;
+      }));
       setPendingLinks(prev => {
         const next = { ...prev };
         delete next[linkId || platform];
@@ -439,7 +452,7 @@ export default function ProfileFounderController(props) {
 
   const handleUpdateHeroField = async (field, value, extraPayload = {}) => {
     const artist = myArtists[0];
-    if (!artist) return;
+    if (!artist) return false;
     setSavingLink(field);
     try {
       const payload = { profileType, [field]: value, ...extraPayload };
@@ -476,6 +489,27 @@ export default function ProfileFounderController(props) {
         if (a?.companyImageAspect && !res?.data?.companyImageAspect) {
           mapped.companyImageAspect = a.companyImageAspect;
         }
+        // Prefer just-saved arrays if API response omits/empties them incorrectly
+        if (field === 'coFounders' && Array.isArray(value)) {
+          mapped.coFounders = value;
+          mapped.showCoFounders = extraPayload.showCoFounders !== false;
+        }
+        if (field === 'milestones' && Array.isArray(value)) {
+          mapped.milestones = value;
+          mapped.showMilestones = extraPayload.showMilestones !== false;
+        }
+        if (field === 'links' && Array.isArray(value)) {
+          mapped.links = value;
+        }
+        if (extraPayload.links && Array.isArray(extraPayload.links)) {
+          mapped.links = extraPayload.links;
+        }
+        if (extraPayload.coFounders && Array.isArray(extraPayload.coFounders)) {
+          mapped.coFounders = extraPayload.coFounders;
+        }
+        if (extraPayload.milestones && Array.isArray(extraPayload.milestones)) {
+          mapped.milestones = extraPayload.milestones;
+        }
         return mapped;
       }));
       setArtistChanged(true);
@@ -483,9 +517,11 @@ export default function ProfileFounderController(props) {
       if (field !== 'photoAspect' && field !== 'companyImageAspect') {
         setPreviewKey(k => k + 1);
       }
+      return true;
     } catch (err) {
       console.error(`Failed to update ${field}:`, err);
       window.alert(`Failed to save ${field}. Please try again.`);
+      return false;
     } finally {
       setSavingLink(null);
     }
