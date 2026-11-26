@@ -1218,6 +1218,7 @@ function GeneralProfileView() {
   // Top logo layout (Profile Image) — independent from Company & Venture
   const topLogoAspect = profile.photoAspect === 'landscape' ? 'landscape' : 'portrait';
   const ventureImageAspect = profile.companyImageAspect === 'portrait' ? 'portrait' : 'landscape';
+  const companyPhotoAspect = ventureImageAspect; // Company & Venture details only
   const isDefaultPersonAvatar = (url) => {
     const s = String(url || '');
     return s.includes('indian_general_avatar') || s.includes('indian_artist_avatar');
