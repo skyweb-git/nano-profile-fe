@@ -428,9 +428,26 @@ export default function ProfileFounderController(props) {
       if (res && res.success === false) {
         throw new Error(res.message || 'The server rejected this update.');
       }
-      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data, profileType) : a));
+      setMyArtists(prev => prev.map((a, j) => {
+        if (j !== 0) return a;
+        const mapped = mapFounderProfileToArtistFormat(res.data, profileType) || {};
+        // Keep layout choice even if an older API response omits photoAspect
+        if (field === 'photoAspect') {
+          return {
+            ...mapped,
+            photoAspect: value === 'landscape' ? 'landscape' : 'portrait'
+          };
+        }
+        if (a?.photoAspect && !res?.data?.photoAspect) {
+          return { ...mapped, photoAspect: a.photoAspect };
+        }
+        return mapped;
+      }));
       setArtistChanged(true);
-      setPreviewKey(k => k + 1);
+      // Layout-only updates should live-sync via DRAFT_UPDATE (no iframe remount flicker)
+      if (field !== 'photoAspect') {
+        setPreviewKey(k => k + 1);
+      }
     } catch (err) {
       console.error(`Failed to update ${field}:`, err);
       window.alert(`Failed to save ${field}. Please try again.`);

@@ -305,6 +305,9 @@ export default function ProfileGeneralDashboard(props) {
           foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
           companyDescription: heroUpdates.companyDescription !== undefined ? heroUpdates.companyDescription : (artist?.companyDescription || ''),
           companyImage: heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || ''),
+          photoAspect: (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
+            ? 'landscape'
+            : 'portrait',
           fundingStage: '',
           teamSize: '',
           pitchDeckPdf: '',
@@ -332,7 +335,7 @@ export default function ProfileGeneralDashboard(props) {
         console.warn('Artist draft sync serialization warning:', err);
       }
     }
-  }, [heroUpdates, artist, previewKey, isFounder]);
+  }, [heroUpdates, artist, previewKey, isFounder, isCompany]);
 
   // Helper editor header with integrated toggle switch
   const renderEditorHeader = (title, fieldName, actionBtn = null) => {
