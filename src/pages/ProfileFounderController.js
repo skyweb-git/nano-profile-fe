@@ -620,12 +620,7 @@ export default function ProfileFounderController(props) {
       const imageUrl = extractUploadUrl(up);
       if (!imageUrl) throw new Error('Could not get uploaded image URL');
       const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-      let idx = -1;
-      if (linkId) {
-        idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-      } else {
-        idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-      }
+      const idx = findLinkIndex(existingLinks, platform, linkId);
       if (idx === -1) return;
       existingLinks[idx] = { ...existingLinks[idx], image: imageUrl };
       await handleUpdateHeroField('links', existingLinks);
@@ -639,12 +634,7 @@ export default function ProfileFounderController(props) {
     const artist = myArtists[0];
     if (!artist) return;
     const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-    let idx = -1;
-    if (linkId) {
-      idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-    } else {
-      idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-    }
+    const idx = findLinkIndex(existingLinks, platform, linkId);
     if (idx === -1) return;
     existingLinks[idx] = { ...existingLinks[idx], image: '' };
     await handleUpdateHeroField('links', existingLinks);
@@ -654,12 +644,7 @@ export default function ProfileFounderController(props) {
     const artist = myArtists[0];
     if (!artist) return;
     const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-    let idx = -1;
-    if (linkId) {
-      idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-    } else {
-      idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-    }
+    const idx = findLinkIndex(existingLinks, platform, linkId);
     if (idx === -1) return;
     existingLinks[idx] = { ...existingLinks[idx], layoutType };
     await handleUpdateHeroField('links', existingLinks);
@@ -669,12 +654,7 @@ export default function ProfileFounderController(props) {
     const artist = myArtists[0];
     if (!artist) return;
     const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-    let idx = -1;
-    if (linkId) {
-      idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-    } else {
-      idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-    }
+    const idx = findLinkIndex(existingLinks, platform, linkId);
     if (idx === -1) return;
     existingLinks[idx] = { ...existingLinks[idx], prioritizeType };
     await handleUpdateHeroField('links', existingLinks);
@@ -684,12 +664,7 @@ export default function ProfileFounderController(props) {
     const artist = myArtists[0];
     if (!artist) return;
     const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-    let idx = -1;
-    if (linkId) {
-      idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-    } else {
-      idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-    }
+    const idx = findLinkIndex(existingLinks, platform, linkId);
     if (idx === -1) return;
     existingLinks[idx] = { ...existingLinks[idx], animationType };
     await handleUpdateHeroField('links', existingLinks);
