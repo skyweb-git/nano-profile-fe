@@ -1317,11 +1317,7 @@ function GeneralProfileView() {
                 <img 
                   src={fixImageUrl(heroPhotoSrc)} 
                   alt={isCompany ? (profile.companyName || profile.name || 'Company logo') : (profile.name || 'Profile')} 
-                  className={[
-                    'hero-profile-image',
-                    isCompany ? 'hero-company-logo' : '',
-                    isCompany ? (companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait') : ''
-                  ].filter(Boolean).join(' ')}
+                  className={['hero-profile-image', isCompany ? 'hero-company-logo' : ''].filter(Boolean).join(' ')}
                   style={{ 
                     marginTop: 0, 
                     marginBottom: 0,
@@ -1331,12 +1327,7 @@ function GeneralProfileView() {
               ) : (
                 <button
                   type="button"
-                  className={[
-                    'hero-profile-image',
-                    'hero-company-logo',
-                    'hero-logo-placeholder',
-                    companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait'
-                  ].join(' ')}
+                  className="hero-profile-image hero-company-logo hero-logo-placeholder"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1369,9 +1360,6 @@ function GeneralProfileView() {
                   </svg>
                   <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     Upload Company Logo
-                  </span>
-                  <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>
-                    Portrait or Landscape
                   </span>
                 </button>
               )}
@@ -2361,7 +2349,7 @@ function GeneralProfileView() {
                       </button>
                     </div>
 
-                    {/* Company Image / Banner */}
+                    {/* Company Image / Banner — portrait/landscape applies here only */}
                     {companyImg ? (
                       <div style={{
                         width: '100%',
@@ -2370,8 +2358,9 @@ function GeneralProfileView() {
                         marginBottom: '20px',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                         border: '1px solid rgba(10,10,10,0.08)',
-                        background: '#000000',
-                        maxHeight: '260px',
+                        background: '#0a0a0a',
+                        aspectRatio: companyPhotoAspect === 'landscape' ? '16 / 9' : '3 / 4',
+                        maxHeight: companyPhotoAspect === 'landscape' ? '260px' : '360px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -2379,7 +2368,7 @@ function GeneralProfileView() {
                         <img
                           src={fixImageUrl(companyImg) || companyImg}
                           alt={companyName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: '260px' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                       </div>
                     ) : isPreview ? (

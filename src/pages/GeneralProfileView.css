@@ -578,29 +578,21 @@
   filter: grayscale(0);
 }
 
-/* Company logo — portrait (default) or landscape */
+/* Company logo at top — fixed frame; ratio choice does NOT change this */
 .artist-public-wrapper .hero-profile-image.hero-company-logo {
   filter: none;
-  background: rgba(10, 10, 10, 0.03);
+  background: #ffffff;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: 240px;
   object-fit: contain;
+  object-position: center;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
-.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-portrait {
-  height: 400px;
-  object-fit: cover;
-}
-.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-landscape {
-  height: auto;
+.artist-public-wrapper .hero-logo-placeholder {
+  height: auto !important;
   aspect-ratio: 16 / 9;
-  max-height: 280px;
-  object-fit: cover;
-}
-.artist-public-wrapper .hero-logo-placeholder.hero-photo-portrait {
-  height: 400px;
-}
-.artist-public-wrapper .hero-logo-placeholder.hero-photo-landscape {
-  height: auto;
-  aspect-ratio: 16 / 9;
-  max-height: 280px;
+  max-height: 240px;
 }
 .artist-public-wrapper .hero-logo-placeholder:hover {
   border-color: rgba(200, 0, 26, 0.55) !important;

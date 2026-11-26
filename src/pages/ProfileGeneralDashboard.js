@@ -839,7 +839,7 @@ export default function ProfileGeneralDashboard(props) {
         </div>
         {isCompany && (
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            Use your company logo here — not a personal photo. Choose portrait or landscape above.
+            Use your company logo here — not a personal photo. The top profile image stays the same; portrait/landscape only changes the company details view.
           </p>
         )}
       </div>
