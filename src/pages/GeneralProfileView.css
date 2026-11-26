@@ -594,6 +594,19 @@
   max-height: 280px;
   object-fit: cover;
 }
+.artist-public-wrapper .hero-logo-placeholder.hero-photo-portrait {
+  height: 400px;
+}
+.artist-public-wrapper .hero-logo-placeholder.hero-photo-landscape {
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: 280px;
+}
+.artist-public-wrapper .hero-logo-placeholder:hover {
+  border-color: rgba(200, 0, 26, 0.55) !important;
+  color: rgba(200, 0, 26, 0.9) !important;
+  background: rgba(200, 0, 26, 0.04) !important;
+}
 
 /* ── NANO PREMIUM LINK ANIMATIONS ── */
 @keyframes nano-buzz {

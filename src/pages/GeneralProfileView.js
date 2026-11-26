@@ -558,8 +558,8 @@ function GeneralProfileView() {
         return;
       }
 
-      // 4. Profile Photo (Avatar)
-      const photoEl = e.target.closest('.hero-profile-image');
+      // 4. Profile Photo / Company Logo (incl. empty placeholder)
+      const photoEl = e.target.closest('.hero-profile-image') || e.target.closest('.hero-logo-placeholder');
       if (photoEl) {
         e.preventDefault();
         e.stopPropagation();
@@ -1221,6 +1221,8 @@ function GeneralProfileView() {
     ? (profile.companyImage || '')
     : profile.photo;
   const showPhotoEffectively = heroPhotoSrc && (profile.showPhoto !== false || isPreview);
+  // In dashboard preview, always keep a clickable logo slot for company profiles
+  const showCompanyLogoPlaceholder = isCompany && isPreview && !heroPhotoSrc;
   const showLocationEffectively = profile.showLocation !== false || isPreview;
   const showNameEffectively = profile.showName !== false || isPreview;
   const showSpecializationEffectively = profile.showSpecialization !== false || isPreview;
@@ -1303,29 +1305,77 @@ function GeneralProfileView() {
             {profile.name ? profile.name.charAt(0).toUpperCase() : 'P'}
           </div>
 
-          {showPhotoEffectively && (
+          {(showPhotoEffectively || showCompanyLogoPlaceholder) && (
             <div style={{
               position: 'relative',
               width: '100%',
               marginTop: '16px',
               marginBottom: '20px',
-              ...(profile.showPhoto === false ? { border: '2px dashed #ef4444', borderRadius: '4px', padding: '4px', boxSizing: 'border-box' } : {})
+              ...(profile.showPhoto === false && showPhotoEffectively ? { border: '2px dashed #ef4444', borderRadius: '4px', padding: '4px', boxSizing: 'border-box' } : {})
             }}>
-              <img 
-                src={fixImageUrl(heroPhotoSrc)} 
-                alt={isCompany ? (profile.companyName || profile.name || 'Company logo') : (profile.name || 'Profile')} 
-                className={[
-                  'hero-profile-image',
-                  isCompany ? 'hero-company-logo' : '',
-                  isCompany ? (companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait') : ''
-                ].filter(Boolean).join(' ')}
-                style={{ 
-                  marginTop: 0, 
-                  marginBottom: 0,
-                  ...(profile.showPhoto === false ? { opacity: 0.6 } : {}) 
-                }} 
-              />
-              {profile.showPhoto === false && (
+              {showPhotoEffectively ? (
+                <img 
+                  src={fixImageUrl(heroPhotoSrc)} 
+                  alt={isCompany ? (profile.companyName || profile.name || 'Company logo') : (profile.name || 'Profile')} 
+                  className={[
+                    'hero-profile-image',
+                    isCompany ? 'hero-company-logo' : '',
+                    isCompany ? (companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait') : ''
+                  ].filter(Boolean).join(' ')}
+                  style={{ 
+                    marginTop: 0, 
+                    marginBottom: 0,
+                    ...(profile.showPhoto === false ? { opacity: 0.6 } : {}) 
+                  }} 
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={[
+                    'hero-profile-image',
+                    'hero-company-logo',
+                    'hero-logo-placeholder',
+                    companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait'
+                  ].join(' ')}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isPreview) {
+                      window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'photo' }, '*');
+                    }
+                  }}
+                  style={{
+                    marginTop: 0,
+                    marginBottom: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    border: '2px dashed rgba(10,10,10,0.25)',
+                    background: 'rgba(10,10,10,0.03)',
+                    color: 'rgba(10,10,10,0.55)',
+                    cursor: 'pointer',
+                    filter: 'none',
+                    boxShadow: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  aria-label="Upload company logo"
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Upload Company Logo
+                  </span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>
+                    Portrait or Landscape
+                  </span>
+                </button>
+              )}
+              {profile.showPhoto === false && showPhotoEffectively && (
                 <div style={{
                   position: 'absolute',
                   top: '16px',
