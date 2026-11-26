@@ -53,7 +53,7 @@ export default function ProfileGeneralPlatforms(props) {
                   type="button"
                   className="dash-add-platform-btn"
                   onClick={() => {
-                    setTempPlatforms([...visiblePlatforms]);
+                    setTempPlatforms([...(visiblePlatforms || [])]);
                     setIsSelectorOpen(true);
                   }}
                 >
@@ -99,7 +99,7 @@ export default function ProfileGeneralPlatforms(props) {
                   });
 
                   // Render placeholder cards for visible platforms that have no links at all
-                  visiblePlatforms.forEach((platformId) => {
+                  (visiblePlatforms || []).forEach((platformId) => {
                     const hasLink = existingLinks.some(l => (l.platform || '').toLowerCase() === platformId.toLowerCase());
                     if (!hasLink) {
                       const platformObj = ALL_PLATFORMS.find(p => p.id === platformId);

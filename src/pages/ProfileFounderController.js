@@ -662,9 +662,10 @@ export default function ProfileFounderController(props) {
   };
 
   const handlePlatformDone = () => {
-    tempPlatforms.forEach(p => {
-      if (!visiblePlatforms.includes(p)) {
-        setVisiblePlatforms(prev => [...prev, p]);
+    const current = visiblePlatforms || [];
+    (tempPlatforms || []).forEach(p => {
+      if (!current.includes(p)) {
+        setVisiblePlatforms(prev => [...(prev || []), p]);
       }
     });
     setIsSelectorOpen(false);
@@ -934,6 +935,8 @@ export default function ProfileFounderController(props) {
     previewKey,
     frontendBase,
     isSelectorOpen,
+    visiblePlatforms,
+    setVisiblePlatforms,
     tempPlatforms,
     togglePlatformInSelector,
     handlePlatformDone,
