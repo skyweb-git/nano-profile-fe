@@ -10,6 +10,7 @@ import './GeneralProfileView.css';
 
 import { useShowcaseEmbedHeight } from '../hooks/useShowcaseEmbedHeight';
 import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
+import { sanitizeBioHtml, isRichBioHtml, bioToPlainText } from '../utils/sanitizeBioHtml';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -690,13 +691,18 @@ function GeneralProfileView() {
                     Boolean(profile?.companyName || (profile?.milestones && profile.milestones.length > 0) || (profile?.coFounders && profile.coFounders.length > 0) || profile?.pitchDeckPdf)));
   const links = (profile.links || []).filter(l => l.url).sort((a, b) => (a.order || 0) - (b.order || 0));
   const theme = getThemeById(themeOverride || profile.theme || (isFounder ? 'custom-theme' : 'midnight'));
-  const bioLines = String(profile.bio || '').split('\n').map((line) => line.trim()).filter(Boolean);
-  const cleanBio = bioLines
-    .filter((line) => !line.startsWith('📞') && !line.startsWith('✉'))
-    .join('\n')
-    .trim();
-
   const rawBio = String(profile.bio || '');
+  const plainBioForMeta = bioToPlainText(rawBio);
+  const bioLines = plainBioForMeta.split('\n').map((line) => line.trim()).filter(Boolean);
+  const cleanBio = isRichBioHtml(rawBio)
+    ? sanitizeBioHtml(rawBio)
+    : bioLines
+      .filter((line) => !line.startsWith('📞') && !line.startsWith('✉'))
+      .join('\n')
+      .trim();
+  const cleanBioIsHtml = isRichBioHtml(rawBio);
+  const cleanBioPlain = bioToPlainText(cleanBio);
+
   const extractedPhone = bioLines.find(l => l.includes('📞'))?.split('📞')[1]?.trim() ||
     bioLines.find(l => l.toLowerCase().includes('phone:'))?.split(/phone:/i)[1]?.trim() ||
     bioLines.find(l => l.toLowerCase().includes('mobile:'))?.split(/mobile:/i)[1]?.trim();
@@ -704,7 +710,7 @@ function GeneralProfileView() {
   const emailRegex = /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i;
   const extractedEmail = bioLines.find(l => l.includes('✉'))?.split('✉')[1]?.trim() ||
     bioLines.find(l => l.toLowerCase().includes('email:'))?.split(/email:/i)[1]?.trim() ||
-    rawBio.match(emailRegex)?.[0];
+    plainBioForMeta.match(emailRegex)?.[0];
 
   const displayPhone = profile.phone || extractedPhone;
   const displayEmail = profile.email || extractedEmail;
@@ -861,12 +867,16 @@ function GeneralProfileView() {
 
           <div className="gp-content-wrap">
             {/* About section */}
-            {cleanBio && (
+            {cleanBioPlain && (
               <div className="gp-section gp-about-section" style={{ paddingLeft: 0, paddingRight: 0, marginTop: '0' }}>
                 <div className="gp-about-header">
                   <h2 className="gp-section-title">About</h2>
                 </div>
-                {cleanBio && <p className="gp-bio">{cleanBio}</p>}
+                {cleanBioIsHtml ? (
+                  <div className="gp-bio about-body-rich" dangerouslySetInnerHTML={{ __html: cleanBio }} />
+                ) : (
+                  <p className="gp-bio" style={{ whiteSpace: 'pre-wrap' }}>{cleanBio}</p>
+                )}
               </div>
             )}
 
@@ -1628,7 +1638,7 @@ function GeneralProfileView() {
         </section>
 
         {/* ABOUT */}
-        {showAboutEffectively && (cleanBio || isPreview) && (
+        {showAboutEffectively && (cleanBioPlain || isPreview) && (
           <section 
             className="section about-section" 
             style={{ 
@@ -1688,12 +1698,23 @@ function GeneralProfileView() {
               )}
             </div>
               <div className="about-body">
-                {cleanBio || <span style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.4)' }}>No biography description set.</span>}
+                {cleanBioPlain ? (
+                  cleanBioIsHtml ? (
+                    <div
+                      className="about-body-rich"
+                      dangerouslySetInnerHTML={{ __html: cleanBio }}
+                    />
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{cleanBio}</div>
+                  )
+                ) : (
+                  <span style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.4)' }}>No biography description set.</span>
+                )}
               </div>
             </div>
           </section>
         )}
-        {showAboutEffectively && (cleanBio || isPreview) && <div className="divider"></div>}
+        {showAboutEffectively && (cleanBioPlain || isPreview) && <div className="divider"></div>}
 
         {/* FOUNDER MILESTONES & TRACTION */}
         {isFounder && profile.showMilestones !== false && (((profile.milestones || []).length > 0) || isPreview) && (
@@ -2298,7 +2319,10 @@ function GeneralProfileView() {
             <div style={{ width: '100%', maxWidth: '540px', display: 'flex', flexDirection: 'column' }}>
               {(() => {
                 const companyName = profile?.companyName || (isPreview ? 'Company Name' : 'Company');
-                const companyDesc = (profile?.companyDescription || profile?.company_description || profile?.companyDesc || '').trim();
+                const companyDescRaw = (profile?.companyDescription || profile?.company_description || profile?.companyDesc || '').trim();
+                const companyDescHtml = isRichBioHtml(companyDescRaw) ? sanitizeBioHtml(companyDescRaw) : '';
+                const companyDescPlain = bioToPlainText(companyDescRaw);
+                const companyDesc = companyDescRaw;
                 const companyImg = (profile?.companyImage || profile?.company_image || profile?.companyImg || '').trim();
                 const companyWeb = (profile?.companyWebsite || profile?.company_website || '').trim();
                 const foundingYr = (profile?.foundingYear || profile?.founding_year || '').trim();
@@ -2473,17 +2497,21 @@ function GeneralProfileView() {
                       }}>
                         About The Company
                       </div>
-                      {companyDesc ? (
-                        <div style={{
-                          fontSize: '0.95rem',
-                          lineHeight: 1.65,
-                          color: 'var(--ink, #1e293b)',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          fontFamily: 'var(--font-body, inherit)'
-                        }}>
-                          {companyDesc}
-                        </div>
+                      {companyDescPlain ? (
+                        <div
+                          className="about-body-rich"
+                          style={{
+                            fontSize: '0.95rem',
+                            lineHeight: 1.65,
+                            color: 'var(--ink, #1e293b)',
+                            whiteSpace: companyDescHtml ? 'normal' : 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontFamily: 'var(--font-body, inherit)'
+                          }}
+                          {...(companyDescHtml
+                            ? { dangerouslySetInnerHTML: { __html: companyDescHtml } }
+                            : { children: companyDesc })}
+                        />
                       ) : (
                         <div style={{
                           fontSize: '0.9rem',

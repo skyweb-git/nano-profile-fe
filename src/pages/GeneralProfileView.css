@@ -356,10 +356,40 @@
   text-align: justify;
   padding-top: 4px;
 }
-.artist-public-wrapper .about-body strong {
+.artist-public-wrapper .about-body strong,
+.artist-public-wrapper .about-body b,
+.artist-public-wrapper .about-body-rich strong,
+.artist-public-wrapper .about-body-rich b {
   color: var(--cream);
   font-style: normal;
   font-weight: 700;
+}
+.artist-public-wrapper .about-body-rich ul,
+.artist-public-wrapper .about-body-rich ol {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.35rem;
+}
+.artist-public-wrapper .about-body-rich ul {
+  list-style: disc;
+}
+.artist-public-wrapper .about-body-rich ol {
+  list-style: decimal;
+}
+.artist-public-wrapper .about-body-rich li {
+  margin: 0.25rem 0;
+}
+.artist-public-wrapper .about-body-rich p {
+  margin: 0 0 0.65em;
+}
+.artist-public-wrapper .about-body-rich p:last-child {
+  margin-bottom: 0;
+}
+.artist-public-wrapper .about-body-rich em,
+.artist-public-wrapper .about-body-rich i {
+  font-style: italic;
+}
+.artist-public-wrapper .about-body-rich u {
+  text-decoration: underline;
 }
 
 /* ── WHAT I DO ── */

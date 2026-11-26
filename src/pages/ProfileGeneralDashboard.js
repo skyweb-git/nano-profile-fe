@@ -19,6 +19,8 @@ import ProfileGeneralLinkArt from './ProfileGeneralLinkArt';
 import { generalProfileAPI } from '../services/api';
 import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
 import { extractNanoUsername, resolveNanoProfile } from '../utils/resolveNanoProfile';
+import RichTextBioEditor from '../components/profile/RichTextBioEditor';
+import { bioToPlainText } from '../utils/sanitizeBioHtml';
 const formatSentenceCase = (text) => {
   if (!text) return '';
   let formatted = text.replace(/,([^\s])/g, ', $1');
@@ -857,12 +859,11 @@ export default function ProfileGeneralDashboard(props) {
         </div>
         <div>
           <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Bio Description</label>
-          <textarea
-            rows={5}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+          <RichTextBioEditor
             value={heroUpdates.bio !== undefined ? heroUpdates.bio : (artist?.bio || '')}
-            onChange={(e) => setHeroUpdates(prev => ({ ...prev, bio: formatSentenceCase(e.target.value) }))}
-            placeholder="Tell your story, your mediums, style, background..."
+            onChange={(html) => setHeroUpdates(prev => ({ ...prev, bio: html }))}
+            placeholder="Paste or type your story — bold, bullets, and line breaks are kept..."
+            minHeight={160}
           />
         </div>
         {renderMobileToggle("showAbout")}
@@ -873,7 +874,7 @@ export default function ProfileGeneralDashboard(props) {
               const bioVal = heroUpdates.bio !== undefined ? heroUpdates.bio : (artist.bio || '');
               
               const isHeadlineEmpty = !expVal.split('|').join('').trim();
-              const isBioEmpty = !bioVal.trim();
+              const isBioEmpty = !bioToPlainText(bioVal).trim();
               
               const extraUpdates = { bio: bioVal };
               if (isHeadlineEmpty && isBioEmpty) {
@@ -1117,12 +1118,11 @@ export default function ProfileGeneralDashboard(props) {
 
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Company Description</label>
-            <textarea
-              rows={5}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none', resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
+            <RichTextBioEditor
               value={compDesc}
-              onChange={(e) => setHeroUpdates(prev => ({ ...prev, companyDescription: e.target.value }))}
-              placeholder="Write a proper description of your company, products, vision, mission, and achievements..."
+              onChange={(html) => setHeroUpdates(prev => ({ ...prev, companyDescription: html }))}
+              placeholder="Paste or write company description — bold, bullets, and line breaks are kept..."
+              minHeight={150}
             />
           </div>
 
