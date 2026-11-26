@@ -2005,12 +2005,14 @@ function GeneralProfileView() {
           </>
         )}
 
-        {/* FOUNDER CO-FOUNDERS & LEADERSHIP TEAM */}
+        {/* TEAM (company) / LEADERSHIP & TEAM (founder) — after Trusted By / Milestones */}
         {isFounder && profile.showCoFounders !== false && (((profile.coFounders || []).length > 0) || isPreview) && (
           <>
             <section className="section founder-team-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
-                <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>LEADERSHIP &amp; TEAM</div>
+                <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>
+                  {isCompany ? 'TEAM' : 'LEADERSHIP & TEAM'}
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {(profile.coFounders && profile.coFounders.length > 0) ? (
@@ -2213,8 +2215,8 @@ function GeneralProfileView() {
         )}
         {!isCompany && showWhatIDoEffectively && (suggestions && (suggestions.length > 0 || isPreview)) && <div className="divider"></div>}
 
-        {/* CONNECT */}
-        {showConnectEffectively && primaryLinks.length > 0 && (
+        {/* CONTACTS / CONNECT — after Team on company & founder profiles */}
+        {showConnectEffectively && (primaryLinks.length > 0 || isPreview) && (
           <section 
             className="section connect-section"
             style={{
@@ -2247,9 +2249,14 @@ function GeneralProfileView() {
               </div>
             )}
             <div className="section-head">
-              <div className="section-title">Connect</div>
+              <div className="section-title">{isCompany ? 'Contacts' : 'Connect'}</div>
             </div>
             <div className="connect-cards">
+              {primaryLinks.length === 0 && isPreview ? (
+                <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b' }}>
+                  + Click to add contact links
+                </div>
+              ) : null}
               {primaryLinks.map((link, i) => {
                 const fallbackTitle = link.id.charAt(0).toUpperCase() + link.id.slice(1);
                 let displayValue = '';
@@ -2485,12 +2492,30 @@ function GeneralProfileView() {
           </>
         )}
 
-        {/* FOOTER */}
+        {/* FOOTER — create profile CTA with link (always at bottom) */}
         <footer className="profile-card-footer" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', width: '100%' }}>
             <div>
-              <div className="profile-card-footer-headline">Create your profile in the nanoprofiles.com</div>
-              <div className="profile-card-footer-sub" style={{ fontSize: '12px', color: 'var(--ink)', marginTop: '8px', opacity: 0.65 }}>NANOPROFILES.COM · Curating Creative Expression</div>
+              <div className="profile-card-footer-headline">Create your profile on nanoprofiles.com</div>
+              <div className="profile-card-footer-sub" style={{ fontSize: '12px', color: 'var(--ink)', marginTop: '8px', opacity: 0.65 }}>
+                NANOPROFILES.COM · Smart Digital Identity
+              </div>
+              <a
+                href="https://nanoprofiles.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  marginTop: '10px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: 'var(--red)',
+                  textDecoration: 'underline',
+                  letterSpacing: '0.02em'
+                }}
+              >
+                nanoprofiles.com
+              </a>
             </div>
             <button
               className="profile-card-footer-cta"
@@ -2513,7 +2538,7 @@ function GeneralProfileView() {
                 window.open('https://nanoprofiles.com', '_blank');
               }}
             >
-              Get Started →
+              Create Profile →
             </button>
           </div>
         </footer>

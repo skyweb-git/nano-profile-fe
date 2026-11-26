@@ -46,7 +46,7 @@ const mapFounderProfileToArtistFormat = (data, profileType = 'founder') => {
     ]),
     showCompany: data.showCompany !== false,
     showPitchDeck: false,
-    showCoFounders: isCompany ? data.showCoFounders === true : data.showCoFounders !== false,
+    showCoFounders: data.showCoFounders !== false,
     showMilestones: data.showMilestones !== false,
     showCta: false,
     artistId: data.username || '',
@@ -143,18 +143,18 @@ export default function ProfileFounderController(props) {
             pitchDeckPdf: '',
             ctaLabel: '',
             ctaUrl: '',
-            milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : [
-              { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
-              { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
-              { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
-            ],
+            milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : (isCompanyProfile ? [] : [
+              { label: '$1.2M Seed Raised' },
+              { label: '50K+ Active Users' },
+              { label: 'Top 5 Product Hunt' }
+            ]),
             coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : (isCompanyProfile ? [] : [
               { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
               { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
             ]),
             showCompany: data.showCompany !== false,
             showPitchDeck: false,
-            showCoFounders: isCompanyProfile ? data.showCoFounders === true : data.showCoFounders !== false,
+            showCoFounders: data.showCoFounders !== false,
             showMilestones: data.showMilestones !== false,
             showCta: false,
             name: data.name || (isCompanyProfile ? 'SKYWEB|IT' : 'RAHUL|SHARMA'),
@@ -216,7 +216,22 @@ export default function ProfileFounderController(props) {
             setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
           }
         } else {
-          setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
+          // Older company profiles were saved with showCoFounders:false by default — enable Team section
+          if (isCompanyProfile && data.showCoFounders === false) {
+            try {
+              const fixRes = await generalProfileAPI.update(
+                { profileType, showCoFounders: true },
+                () => getIdToken(),
+                getFirebaseUser
+              );
+              const fixed = fixRes.data || fixRes;
+              setMyArtists([mapFounderProfileToArtistFormat({ ...data, ...fixed, showCoFounders: true }, profileType)]);
+            } catch (_) {
+              setMyArtists([mapFounderProfileToArtistFormat({ ...data, showCoFounders: true }, profileType)]);
+            }
+          } else {
+            setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
+          }
         }
         updateOnboardingStep(0);
       } else {
@@ -718,7 +733,7 @@ export default function ProfileFounderController(props) {
         ]),
         showCompany: true,
         showPitchDeck: false,
-        showCoFounders: !isCompanyProfile,
+        showCoFounders: true,
         showMilestones: true,
         showCta: false,
         bio: formData.bio || '',
@@ -821,7 +836,7 @@ export default function ProfileFounderController(props) {
         ],
         showCompany: true,
         showPitchDeck: false,
-        showCoFounders: !isCompanyProfile,
+        showCoFounders: true,
         showMilestones: true,
         showCta: false,
         city: 'Bengaluru',

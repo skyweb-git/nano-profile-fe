@@ -1993,7 +1993,7 @@ export default function ProfileGeneralDashboard(props) {
 
     return (
       <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        {renderEditorHeader("Leadership & Team", "showCoFounders")}
+        {renderEditorHeader(isCompany ? 'Team' : 'Leadership & Team', "showCoFounders")}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Add Team Member</h5>
@@ -2170,8 +2170,8 @@ export default function ProfileGeneralDashboard(props) {
                     : undefined,
                   profileType: cf.profileType || (cf.artistId ? 'artist' : 'general')
                 }));
-                setHeroUpdates((prev) => ({ ...prev, coFounders: toSave }));
-                handleUpdateHeroField('coFounders', toSave).then(() => {
+                setHeroUpdates((prev) => ({ ...prev, coFounders: toSave, showCoFounders: true }));
+                handleUpdateHeroField('coFounders', toSave, { showCoFounders: true }).then(() => {
                   setActiveEditor('default');
                 });
               }}
@@ -2275,7 +2275,7 @@ export default function ProfileGeneralDashboard(props) {
             
             {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, isCompany ? "Trusted By" : "Traction & Milestones", "showMilestones", isCompany ? "Link client company Nano profiles you have served" : "Key achievements, funds raised, and user growth badges")}
             
-            {renderQuickAccessButton('team', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, "Leadership & Team", "showCoFounders", "Co-founders and team member Nano profiles")}
+            {renderQuickAccessButton('team', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, isCompany ? "Team" : "Leadership & Team", "showCoFounders", isCompany ? "Add team member Nano profiles" : "Co-founders and team member Nano profiles")}
           </div>
         </div>
       )}
