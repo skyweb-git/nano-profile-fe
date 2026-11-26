@@ -53,6 +53,7 @@ const mapFounderProfileToArtistFormat = (data, profileType = 'founder') => {
     experience: data.title || (isCompany ? 'Technology Company' : ''),
     profileTheme: data.theme || 'custom-theme',
     photoAspect: data.photoAspect === 'landscape' ? 'landscape' : 'portrait',
+    companyImageAspect: data.companyImageAspect === 'portrait' ? 'portrait' : 'landscape',
     isSetup: true
   };
 };
@@ -165,6 +166,7 @@ export default function ProfileFounderController(props) {
             email: user?.email || data.email || '',
             photo: data.photo || `${base}/indian_general_avatar.png`,
             photoAspect: data.photoAspect === 'landscape' ? 'landscape' : 'portrait',
+            companyImageAspect: data.companyImageAspect === 'portrait' ? 'portrait' : 'landscape',
             banner: data.banner || `${base}/mock_art_folk.png`,
             theme: 'custom-theme',
             font: data.font || 'outfit',
@@ -431,21 +433,30 @@ export default function ProfileFounderController(props) {
       setMyArtists(prev => prev.map((a, j) => {
         if (j !== 0) return a;
         const mapped = mapFounderProfileToArtistFormat(res.data, profileType) || {};
-        // Keep layout choice even if an older API response omits photoAspect
+        // Keep layout choices even if an older API response omits them
         if (field === 'photoAspect') {
           return {
             ...mapped,
             photoAspect: value === 'landscape' ? 'landscape' : 'portrait'
           };
         }
+        if (field === 'companyImageAspect') {
+          return {
+            ...mapped,
+            companyImageAspect: value === 'portrait' ? 'portrait' : 'landscape'
+          };
+        }
         if (a?.photoAspect && !res?.data?.photoAspect) {
-          return { ...mapped, photoAspect: a.photoAspect };
+          mapped.photoAspect = a.photoAspect;
+        }
+        if (a?.companyImageAspect && !res?.data?.companyImageAspect) {
+          mapped.companyImageAspect = a.companyImageAspect;
         }
         return mapped;
       }));
       setArtistChanged(true);
       // Layout-only updates should live-sync via DRAFT_UPDATE (no iframe remount flicker)
-      if (field !== 'photoAspect') {
+      if (field !== 'photoAspect' && field !== 'companyImageAspect') {
         setPreviewKey(k => k + 1);
       }
     } catch (err) {
