@@ -1878,8 +1878,8 @@ function GeneralProfileView() {
           </>
         )}
 
-        {/* WHAT I DO (Suggestions / Ventures) */}
-        {showWhatIDoEffectively && (Array.isArray(suggestions) && (suggestions.length > 0 || isPreview)) && (
+        {/* WHAT I DO (Suggestions / Ventures) — hidden for company profiles */}
+        {!isCompany && showWhatIDoEffectively && (Array.isArray(suggestions) && (suggestions.length > 0 || isPreview)) && (
           <section 
             className="section" 
             style={{ 
@@ -1944,7 +1944,7 @@ function GeneralProfileView() {
             </div>
           </section>
         )}
-        {showWhatIDoEffectively && (suggestions && (suggestions.length > 0 || isPreview)) && <div className="divider"></div>}
+        {!isCompany && showWhatIDoEffectively && (suggestions && (suggestions.length > 0 || isPreview)) && <div className="divider"></div>}
 
         {/* CONNECT */}
         {showConnectEffectively && primaryLinks.length > 0 && (

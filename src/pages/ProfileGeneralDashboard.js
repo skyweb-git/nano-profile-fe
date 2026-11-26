@@ -1779,7 +1779,7 @@ export default function ProfileGeneralDashboard(props) {
           
 
           
-          {renderQuickAccessButton('what-i-do', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, isFounder ? "Ventures & Products" : "What I Do", "showWhatIDo", isFounder ? "List your startup products, platforms, and services" : "List your custom services and offerings")}
+          {!isCompany && renderQuickAccessButton('what-i-do', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>, isFounder ? "Ventures & Products" : "What I Do", "showWhatIDo", isFounder ? "List your startup products, platforms, and services" : "List your custom services and offerings")}
 
 
         </div>
@@ -1811,7 +1811,7 @@ export default function ProfileGeneralDashboard(props) {
       case 'design':
         return null;
       case 'what-i-do':
-        return renderWhatIDoEditor();
+        return isCompany ? renderDefaultPanel() : renderWhatIDoEditor();
       default:
         return renderDefaultPanel();
     }
