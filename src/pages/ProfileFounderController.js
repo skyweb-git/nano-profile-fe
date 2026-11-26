@@ -20,12 +20,13 @@ import {
 } from './ProfileHelpers';
 import { buildWhatsAppUrlFromFullINPhone } from '../utils/indianPhone';
 
-const mapFounderProfileToArtistFormat = (data) => {
+const mapFounderProfileToArtistFormat = (data, profileType = 'founder') => {
   if (!data) return null;
+  const isCompany = profileType === 'company';
   return {
     ...data,
-    profileType: 'founder',
-    companyName: data.companyName || 'Nexus Tech Labs',
+    profileType,
+    companyName: data.companyName || (isCompany ? 'Skyweb IT Solutions' : 'Nexus Tech Labs'),
     companyWebsite: data.companyWebsite || 'https://nexustechlabs.com',
     foundingYear: data.foundingYear || '2023',
     fundingStage: '',
@@ -34,33 +35,39 @@ const mapFounderProfileToArtistFormat = (data) => {
     ctaLabel: '',
     ctaUrl: '',
     milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : [
-      { label: '$1.2M Seed Raised' },
-      { label: '50K+ Active Users' },
-      { label: 'Top 5 Product Hunt' }
+      { label: isCompany ? 'Products Shipped' : '$1.2M Seed Raised' },
+      { label: isCompany ? 'Clients Served' : '50K+ Active Users' },
+      { label: isCompany ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
     ],
-    coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : [
+    coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : (isCompany ? [] : [
       { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
       { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
-    ],
+    ]),
     showCompany: data.showCompany !== false,
     showPitchDeck: false,
-    showCoFounders: data.showCoFounders !== false,
+    showCoFounders: isCompany ? data.showCoFounders === true : data.showCoFounders !== false,
     showMilestones: data.showMilestones !== false,
     showCta: false,
     artistId: data.username || '',
     backgroundPhoto: data.banner || '',
-    experience: data.title || '',
+    experience: data.title || (isCompany ? 'Technology Company' : ''),
     profileTheme: data.theme || 'custom-theme',
+    photoAspect: data.photoAspect === 'landscape' ? 'landscape' : 'portrait',
     isSetup: true
   };
 };
 
 export default function ProfileFounderController(props) {
-  const { user, handleLogout, isMobileViewport, frontendBase, setProfileMode, setProfileLock, setChoiceSource } = props;
+  const { user, handleLogout, isMobileViewport, frontendBase, setProfileMode, setProfileLock, setChoiceSource, profileType: profileTypeProp = 'founder' } = props;
+  const profileType = profileTypeProp === 'company' ? 'company' : 'founder';
+  const isCompanyProfile = profileType === 'company';
+  const dashboardTitle = isCompanyProfile ? 'Company Profile' : 'Founder Profile';
+  const stepStorageKey = isCompanyProfile ? 'company_step' : 'founder_step';
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState(defaultForm);
   const [photoFile, setPhotoFile] = useState(null);
+  const [photoAspect, setPhotoAspect] = useState('portrait');
   const [bgFile, setBgFile] = useState(null);
 
   const [onboardingPlatforms, setOnboardingPlatforms] = useState([]);
@@ -97,12 +104,12 @@ export default function ProfileFounderController(props) {
   const [artGallerySelectedItem, setArtGallerySelectedItem] = useState(null);
 
   const [onboardingStep, setOnboardingStep] = useState(() => {
-    return parseInt(getStoredValue(user, 'founder_step') || getStoredValue(user, 'onboarding_step')) || 0;
+    return parseInt(getStoredValue(user, stepStorageKey) || getStoredValue(user, 'onboarding_step')) || 0;
   });
 
   const updateOnboardingStep = useCallback((step) => {
     setOnboardingStep(step);
-    setStoredValue(user, 'founder_step', step.toString());
+    setStoredValue(user, stepStorageKey, step.toString());
     setStoredValue(user, 'onboarding_step', step.toString());
   }, [user]);
 
@@ -115,17 +122,17 @@ export default function ProfileFounderController(props) {
     if (!user) return;
     setArtistsLoading(true);
     try {
-      const res = await generalProfileAPI.getMine(() => getIdToken(), getFirebaseUser, 'founder');
+      const res = await generalProfileAPI.getMine(() => getIdToken(), getFirebaseUser, profileType);
       const data = res.data || res;
       if (data && data.username) {
         // Auto-initialize if it is an empty profile created via admin panel
         const isEmptyProfile = !data.name && !data.title && !data.bio && (!data.links || data.links.length === 0);
-        const needsFounderInit = !data.companyName || data.profileType !== 'founder';
+        const needsFounderInit = !data.companyName || data.profileType !== profileType;
         if (isEmptyProfile || !data.isSetup || needsFounderInit) {
           const base = window.location.origin;
           const initializePayload = {
-            profileType: 'founder',
-            companyName: data.companyName || 'Nexus Tech Labs',
+            profileType,
+            companyName: data.companyName || (isCompanyProfile ? 'Skyweb IT Solutions' : 'Nexus Tech Labs'),
             companyWebsite: data.companyWebsite || 'https://nexustechlabs.com',
             foundingYear: data.foundingYear || '2023',
             fundingStage: '',
@@ -134,27 +141,30 @@ export default function ProfileFounderController(props) {
             ctaLabel: '',
             ctaUrl: '',
             milestones: (data.milestones && data.milestones.length > 0) ? data.milestones : [
-              { label: '$1.2M Seed Raised' },
-              { label: '50K+ Active Users' },
-              { label: 'Top 5 Product Hunt' }
+              { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
+              { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
+              { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
             ],
-            coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : [
+            coFounders: (data.coFounders && data.coFounders.length > 0) ? data.coFounders : (isCompanyProfile ? [] : [
               { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
               { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
-            ],
+            ]),
             showCompany: data.showCompany !== false,
             showPitchDeck: false,
-            showCoFounders: data.showCoFounders !== false,
+            showCoFounders: isCompanyProfile ? data.showCoFounders === true : data.showCoFounders !== false,
             showMilestones: data.showMilestones !== false,
             showCta: false,
-            name: data.name || 'RAHUL|SHARMA',
-            title: data.title || 'Co-Founder & CEO',
-            specialization: data.specialization || 'FinTech, AI, SaaS, Venture Capital',
+            name: data.name || (isCompanyProfile ? 'SKYWEB|IT' : 'RAHUL|SHARMA'),
+            title: data.title || (isCompanyProfile ? 'Technology Company' : 'Co-Founder & CEO'),
+            specialization: data.specialization || (isCompanyProfile ? 'Software, Cloud, Digital Products' : 'FinTech, AI, SaaS, Venture Capital'),
             city: data.city || 'Bengaluru',
             state: data.state || 'Karnataka',
-            bio: data.bio || 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.',
+            bio: data.bio || (isCompanyProfile
+              ? 'A technology company building scalable digital products, cloud platforms, and modern web experiences for businesses that want to grow faster.'
+              : 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.'),
             email: user?.email || data.email || '',
-            photo: data.photo || `${base}/indian_general_avatar.png`,
+            photo: data.photo || (isCompanyProfile ? '' : `${base}/indian_general_avatar.png`),
+            photoAspect: data.photoAspect === 'landscape' ? 'landscape' : 'portrait',
             banner: data.banner || `${base}/mock_art_folk.png`,
             theme: 'custom-theme',
             font: data.font || 'outfit',
@@ -196,13 +206,13 @@ export default function ProfileFounderController(props) {
           try {
             const updateRes = await generalProfileAPI.update(initializePayload, () => getIdToken(), getFirebaseUser);
             const updatedData = updateRes.data || updateRes;
-            setMyArtists([mapFounderProfileToArtistFormat(updatedData)]);
+            setMyArtists([mapFounderProfileToArtistFormat(updatedData, profileType)]);
           } catch (updateErr) {
-            console.error('Failed to auto-populate founder profile:', updateErr);
-            setMyArtists([mapFounderProfileToArtistFormat(data)]);
+            console.error('Failed to auto-populate profile:', updateErr);
+            setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
           }
         } else {
-          setMyArtists([mapFounderProfileToArtistFormat(data)]);
+          setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
         }
         updateOnboardingStep(0);
       } else {
@@ -217,7 +227,7 @@ export default function ProfileFounderController(props) {
       setArtistsLoading(false);
       setArtistListReady(true);
     }
-  }, [user, getFirebaseUser, updateOnboardingStep]);
+  }, [user, getFirebaseUser, updateOnboardingStep, profileType, isCompanyProfile]);
 
   useEffect(() => {
     if (user) {
@@ -339,7 +349,7 @@ export default function ProfileFounderController(props) {
         ? existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase()) === existingLinks.findIndex(l => String(l._id) === String(linkId))
         : true;
 
-      const payload = { profileType: 'founder' };
+      const payload = { profileType };
       if (isFirstInstance) {
         payload[platform] = finalValue;
       }
@@ -394,7 +404,7 @@ export default function ProfileFounderController(props) {
         throw new Error(res.message || 'The server rejected this update.');
       }
 
-      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data) : a));
+      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data, profileType) : a));
       setPendingLinks(prev => {
         const next = { ...prev };
         delete next[linkId || platform];
@@ -413,12 +423,12 @@ export default function ProfileFounderController(props) {
     if (!artist) return;
     setSavingLink(field);
     try {
-      const payload = { profileType: 'founder', [field]: value, ...extraPayload };
+      const payload = { profileType, [field]: value, ...extraPayload };
       const res = await generalProfileAPI.update(payload, () => getIdToken(), getFirebaseUser);
       if (res && res.success === false) {
         throw new Error(res.message || 'The server rejected this update.');
       }
-      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data) : a));
+      setMyArtists(prev => prev.map((a, j) => j === 0 ? mapFounderProfileToArtistFormat(res.data, profileType) : a));
       setArtistChanged(true);
       setPreviewKey(k => k + 1);
     } catch (err) {
@@ -630,7 +640,7 @@ export default function ProfileFounderController(props) {
       const name = parts.length > 1 ? `${parts[0]}|${parts.slice(1).join(' ')}` : rawName;
 
       const base = window.location.origin;
-      const initialPhoto = uploadedPhoto || `${base}/indian_general_avatar.png`;
+      const initialPhoto = uploadedPhoto || (isCompanyProfile ? '' : `${base}/indian_general_avatar.png`);
 
       const linksArray = onboardingPlatforms.map((pid, idx) => {
         let url = formData[pid] || '';
@@ -650,7 +660,7 @@ export default function ProfileFounderController(props) {
         name,
         username: (formData.artistId || '').toLowerCase().trim(),
         specialization: formData.specialization || '',
-        title: formData.experience || 'Co-Founder & CEO',
+        title: formData.experience || (isCompanyProfile ? 'Technology Company' : 'Co-Founder & CEO'),
         companyName: formData.companyName || '',
         companyWebsite: formData.companyWebsite || '',
         foundingYear: formData.foundingYear || '2023',
@@ -660,27 +670,29 @@ export default function ProfileFounderController(props) {
         ctaLabel: '',
         ctaUrl: '',
         milestones: formData.milestones || [
-          { label: '$1.2M Seed Raised' },
-          { label: '50K+ Active Users' },
-          { label: 'Top 5 Product Hunt' }
+          { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
+          { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
+          { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
         ],
-        coFounders: formData.coFounders || [
+        coFounders: formData.coFounders || (isCompanyProfile ? [] : [
           { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
           { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
-        ],
+        ]),
         showCompany: true,
         showPitchDeck: false,
-        showCoFounders: true,
+        showCoFounders: !isCompanyProfile,
         showMilestones: true,
         showCta: false,
         bio: formData.bio || '',
         email: formData.email || user?.email || '',
         phone: formData.phone || '',
-        photo: initialPhoto,
+        photo: isCompanyProfile ? '' : initialPhoto,
+        companyImage: isCompanyProfile ? initialPhoto : (formData.companyImage || ''),
+        photoAspect: isCompanyProfile && photoAspect === 'landscape' ? 'landscape' : 'portrait',
         theme: 'custom-theme', // Artist profile signature colors!
         font: 'outfit',
         bioFont: 'outfit',
-        profileType: 'founder',
+        profileType,
         isSetup: true,
         showPhoto: true,
         showName: true,
@@ -716,7 +728,7 @@ export default function ProfileFounderController(props) {
       const getFirebaseUserFn = getFirebaseUser;
       let res;
       try {
-        const existing = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, 'founder');
+        const existing = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, profileType);
         if (existing && existing.data) {
           res = await generalProfileAPI.update(payload, getIdTokenFn, getFirebaseUserFn);
         } else {
@@ -733,7 +745,7 @@ export default function ProfileFounderController(props) {
       await loadMyProfiles();
       updateOnboardingStep(0);
     } catch (err) {
-      console.error('Founder onboarding error:', err);
+      console.error('Onboarding error:', err);
       setError(err.message || 'Failed to complete setup. Please try again.');
     } finally {
       setSaving(false);
@@ -748,10 +760,10 @@ export default function ProfileFounderController(props) {
       const base = window.location.origin;
       const payload = {
         username: username.toLowerCase().trim(),
-        name: 'RAHUL|SHARMA',
-        title: 'Co-Founder & CEO',
-        specialization: 'FinTech, AI, SaaS, Venture Capital',
-        companyName: 'Nexus Tech Labs',
+        name: isCompanyProfile ? 'SKYWEB|IT' : 'RAHUL|SHARMA',
+        title: isCompanyProfile ? 'Technology Company' : 'Co-Founder & CEO',
+        specialization: isCompanyProfile ? 'Software, Cloud, Digital Products' : 'FinTech, AI, SaaS, Venture Capital',
+        companyName: isCompanyProfile ? 'Skyweb IT Solutions' : 'Nexus Tech Labs',
         companyWebsite: 'https://nexustechlabs.com',
         foundingYear: '2023',
         fundingStage: '',
@@ -760,29 +772,32 @@ export default function ProfileFounderController(props) {
         ctaLabel: '',
         ctaUrl: '',
         milestones: [
-          { label: '$1.2M Seed Raised' },
-          { label: '50K+ Active Users' },
-          { label: 'Top 5 Product Hunt' }
+          { label: isCompanyProfile ? 'Products Shipped' : '$1.2M Seed Raised' },
+          { label: isCompanyProfile ? 'Clients Served' : '50K+ Active Users' },
+          { label: isCompanyProfile ? 'Full-Stack Delivery' : 'Top 5 Product Hunt' }
         ],
-        coFounders: [
+        coFounders: isCompanyProfile ? [] : [
           { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
           { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
         ],
         showCompany: true,
         showPitchDeck: false,
-        showCoFounders: true,
+        showCoFounders: !isCompanyProfile,
         showMilestones: true,
         showCta: false,
         city: 'Bengaluru',
         state: 'Karnataka',
-        bio: 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.',
+        bio: isCompanyProfile
+          ? 'A technology company building scalable digital products, cloud platforms, and modern web experiences for businesses that want to grow faster.'
+          : 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.',
         email: user?.email || '',
-        photo: `${base}/indian_general_avatar.png`,
+        photo: isCompanyProfile ? '' : `${base}/indian_general_avatar.png`,
+        photoAspect: 'portrait',
         banner: `${base}/mock_art_folk.png`,
         theme: 'custom-theme',
         font: 'outfit',
         bioFont: 'outfit',
-        profileType: 'founder',
+        profileType,
         isSetup: true,
         showPhoto: true,
         showName: true,
@@ -832,7 +847,7 @@ export default function ProfileFounderController(props) {
     }
   };
 
-  const displayName = user?.displayName || user?.email || 'Founder Profile';
+  const displayName = user?.displayName || user?.email || dashboardTitle;
   const displayEmail = user?.email || '';
   const avatarLetter = user?.displayName?.charAt(0) || user?.email?.charAt(0) || '?';
 
@@ -934,7 +949,7 @@ export default function ProfileFounderController(props) {
     setNewTagText,
     syncFonts,
     setSyncFonts,
-    dashboardTitle: 'Founder Profile'
+    dashboardTitle
   };
 
   if (onboardingStep > 0) {
@@ -954,6 +969,9 @@ export default function ProfileFounderController(props) {
           ALL_PLATFORMS={ALL_PLATFORMS}
           photoFile={photoFile}
           setPhotoFile={setPhotoFile}
+          photoAspect={photoAspect}
+          setPhotoAspect={setPhotoAspect}
+          isCompanyProfile={isCompanyProfile}
           bgFile={bgFile}
           setBgFile={setBgFile}
           error={error}
@@ -977,6 +995,6 @@ export default function ProfileFounderController(props) {
   }
 
   return (
-    <ProfileGeneralDashboard {...dashboardProps} dashboardTitle="Founder Profile" />
+    <ProfileGeneralDashboard {...dashboardProps} dashboardTitle={dashboardTitle} />
   );
 }

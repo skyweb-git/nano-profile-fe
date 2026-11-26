@@ -11,6 +11,8 @@ import { getIdToken } from '../firebase';
 import { fixImageUrl } from '../utils/imageHelper';
 import ImageCropperModal from '../components/profile/ImageCropperModal';
 import { extractUploadUrl } from './ProfileHelpers';
+import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
+import { extractNanoUsername, resolveNanoProfile } from '../utils/resolveNanoProfile';
 
 export default function ProfileFounderDashboard(props) {
   const {
@@ -42,6 +44,7 @@ export default function ProfileFounderDashboard(props) {
   const pdfInputRef = useRef(null);
 
   const profile = founderProfile;
+  const liveCoFounders = useLiveTeamMembers(profile?.coFounders || []);
   if (!profile) return null;
 
   const startEdit = (field) => { setHeroEditing(field); setHeroDraft(profile[field] || ''); };
@@ -85,31 +88,43 @@ export default function ProfileFounderDashboard(props) {
   const handleAddCoFounderByUsername = async () => {
     let raw = newCfUsername.trim();
     if (!raw) return;
-    const linkMatch = raw.match(/\/link\/([a-zA-Z0-9_.-]+)/i);
-    let clean = linkMatch && linkMatch[1] ? linkMatch[1] : raw.replace(/^@+/, '').trim();
+    const linkMatch = raw.match(/\/(?:link|artist|a|founder|company|restaurant)\/([a-zA-Z0-9_.-]+)/i);
+    let clean = (linkMatch && linkMatch[1] ? linkMatch[1] : raw.replace(/^@+/, '').trim())
+      .toLowerCase()
+      .trim();
     if (!clean) return;
+
+    const existing = (profile.coFounders || []).some((cf) => {
+      const id = (cf.nanoUsername || cf.username || cf.artistId || '').replace(/^@+/, '').toLowerCase();
+      return id === clean;
+    });
+    if (existing) {
+      setCfFetchMsg(`@${clean} is already on the team.`);
+      return;
+    }
 
     setIsAddingCf(true);
     setCfFetchMsg(`Fetching profile @${clean}...`);
-    let name = `@${clean}`;
-    let role = 'Team Member';
-    let photo = '';
 
-    try {
-      const res = await generalProfileAPI.getByUsername(clean);
-      if (res && res.data) {
-        name = (res.data.name || clean).replace(/\|/g, ' ').trim();
-        role = res.data.title || res.data.experience || (res.data.profileType === 'founder' ? 'Founder' : 'Team Member');
-        photo = res.data.photo || '';
-      }
-    } catch (e) {
-      console.warn('Profile fetch warning:', e);
-    } finally {
-      setIsAddingCf(false);
-      setCfFetchMsg('');
+    const live = await resolveNanoProfile(clean);
+    setIsAddingCf(false);
+
+    if (!live) {
+      setCfFetchMsg(`No Nano profile found for @${clean}. Check the username and try again.`);
+      return;
     }
 
-    const c = [...(profile.coFounders || []), { name, role, photo, username: clean, nanoUsername: clean }];
+    setCfFetchMsg('');
+    clean = live.username || clean;
+    const c = [...(profile.coFounders || []), {
+      name: live.name,
+      role: live.role,
+      photo: live.photo,
+      username: clean,
+      nanoUsername: clean,
+      artistId: live.profileType === 'artist' ? clean : undefined,
+      profileType: live.profileType
+    }];
     updateField('coFounders', c);
     setNewCfUsername('');
   };
@@ -539,7 +554,11 @@ export default function ProfileFounderDashboard(props) {
                       </button>
                     </div>
                     {cfFetchMsg && (
-                      <div style={{ fontSize: '0.78rem', color: '#2563eb', marginTop: '6px' }}>{cfFetchMsg}</div>
+                      <div style={{
+                        fontSize: '0.78rem',
+                        color: /no nano profile|already on the team/i.test(cfFetchMsg) ? '#dc2626' : '#2563eb',
+                        marginTop: '6px'
+                      }}>{cfFetchMsg}</div>
                     )}
                   </div>
 
@@ -549,10 +568,10 @@ export default function ProfileFounderDashboard(props) {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '600px' }}>
-                      {(profile.coFounders || []).map((cf, idx) => {
-                        const uname = (cf.nanoUsername || cf.username || '').replace(/^@+/, '');
+                      {(liveCoFounders.length ? liveCoFounders : (profile.coFounders || [])).map((cf, idx) => {
+                        const uname = extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || '');
                         return (
-                          <div key={idx} style={{ padding: '0.9rem 1.2rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div key={`${uname || 'm'}-${idx}`} style={{ padding: '0.9rem 1.2rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', flexShrink: 0 }}>
                                 {cf.photo ? <img src={cf.photo} alt={cf.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (cf.name || uname || 'T').charAt(0).toUpperCase()}

@@ -164,8 +164,8 @@ const TESTIMONIALS = [
   {
     id: 2,
     name: 'Priya Nair',
-    role: 'Principal, Greenfield School',
-    quote: 'No installation needed. Any phone taps and opens the student profile instantly with a beautifully clean UI.',
+    role: 'Founder, Greenfield Ventures',
+    quote: 'No installation needed. Any phone taps and opens the founder profile instantly with a beautifully clean UI.',
     accent: '#34d399',
     avatar: makePixelAvatar({
       bg: '#052e16', skin: '#f1c1a0', hair: '#2d1c14', shirt: '#059669',
@@ -241,8 +241,8 @@ const TESTIMONIALS = [
   {
     id: 9,
     name: 'Divya Reddy',
-    role: 'Registrar, Heritage Academy',
-    quote: 'Student IDs are now fully digital. Parents tap the card at pickup and instantly verify identity — brilliant.',
+    role: 'Partner, Heritage Ventures',
+    quote: 'Founder profiles are now fully digital. Investors tap the card and instantly see the venture story — brilliant.',
     accent: '#fbbf24',
     avatar: makePixelAvatar({
       bg: '#1c1400', skin: '#f0bb97', hair: '#2c1b13', shirt: '#b45309',

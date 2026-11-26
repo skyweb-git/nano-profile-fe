@@ -1,186 +1,111 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { auth, onAuthStateChanged, logout } from '../../firebase';
-import './HomeNavbar.overrides.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { auth, logout, onAuthStateChanged } from '../../firebase';
+import './MarketingSite.css';
+
+const LINKS = [
+  { to: '/', label: 'Home', match: (p) => p === '/' },
+  {
+    to: '/profiles',
+    label: 'Profiles',
+    match: (p) =>
+      p === '/profiles' ||
+      p.startsWith('/founder') ||
+      p.startsWith('/company') ||
+      p.startsWith('/artist') ||
+      p.startsWith('/professional') ||
+      p.startsWith('/restaurant'),
+  },
+];
 
 export default function HomeNavbar() {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-    const navigate = useNavigate();
-    const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [user, setUser] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
-    const isHomeActive = pathname === '/';
-    const isArtistActive = pathname.startsWith('/artist-showcase') || pathname === '/artist';
-    const isProfessionalActive = pathname.startsWith('/professional-showcase') || pathname === '/professional';
-    const isStudentActive = pathname.startsWith('/student-showcase') || pathname === '/student';
-    const isRestaurantActive = pathname.startsWith('/restaurant-showcase') || pathname.startsWith('/link/');
-    const avatarMenuRef = useRef(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, setUser);
+    return () => unsub();
+  }, []);
 
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
-                setAvatarMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleLogout = () => {
-        if (user) {
-            try {
-                const identifier = user.email || user.uid;
-                localStorage.removeItem(`nano_${identifier}_profile_mode`);
-                localStorage.removeItem(`nano_${identifier}_profile_type_lock`);
-                localStorage.removeItem(`nano_${identifier}_general_flow_mode`);
-                localStorage.removeItem(`nano_${identifier}_restaurant_profile`);
-                localStorage.removeItem(`nano_${identifier}_restaurant_onboarding_step`);
-                localStorage.removeItem(`nano_${identifier}_onboarding_step`);
-                localStorage.removeItem(`nano_${identifier}_general_step`);
-                localStorage.removeItem(`nano_${identifier}_landing_otp_auth`);
-            } catch (e) {
-                console.error('Error clearing namespaced localStorage on logout:', e);
-            }
-            logout();
-        }
-        try {
-            localStorage.removeItem('landing_otp_auth');
-            localStorage.removeItem('onboarding_step');
-            localStorage.removeItem('general_step');
-            localStorage.removeItem('profile_mode');
-            localStorage.removeItem('profile_type_lock');
-            localStorage.removeItem('general_flow_mode');
-            localStorage.removeItem('restaurant_onboarding_step');
-            localStorage.removeItem('restaurant_profile');
-        } catch (e) {
-            console.error('Error clearing localStorage on logout:', e);
-        }
-        setMobileMenuOpen(false);
-        setAvatarMenuOpen(false);
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
 
-    const isLoggedIn = !!user;
+  const handleLogout = () => {
+    if (user) {
+      try {
+        const id = user.email || user.uid;
+        [
+          'profile_mode',
+          'profile_type_lock',
+          'general_flow_mode',
+          'restaurant_profile',
+          'restaurant_onboarding_step',
+          'onboarding_step',
+          'general_step',
+          'landing_otp_auth',
+        ].forEach((k) => localStorage.removeItem(`nano_${id}_${k}`));
+      } catch (_) {}
+      logout();
+    }
+    setMenuOpen(false);
+  };
 
-    const userInitial = user?.displayName
-        ? user.displayName.charAt(0).toUpperCase()
-        : user?.email
-            ? user.email.charAt(0).toUpperCase()
-            : 'U';
+  const initial = user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U';
 
-    return (
-        <nav className="nano-navbar">
-            <div className="navbar-container">
-                <div className="navbar-left">
-                    <Link className="navbar-logo" to="/">
-                        <div className="logo-text">Nano Profiles</div>
-                    </Link>
-                </div>
+  return (
+    <header className="mkt-nav">
+      <div className="mkt-nav-inner">
+        <Link className="mkt-nav-logo" to="/">Nano Profiles</Link>
 
-                <div className={`navbar-center ${mobileMenuOpen ? 'mobile-show' : ''}`}>
-                    <div className="nav-links-wrap">
-                        <Link
-                            to="/"
-                            className={`nav-link${isHomeActive ? ' nav-link--active' : ''}`}
-                            aria-current={isHomeActive ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            HOME
-                        </Link>
-                        <Link
-                            to="/artist-showcase"
-                            className={`nav-link${isArtistActive ? ' nav-link--active' : ''}`}
-                            aria-current={isArtistActive ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            ARTIST
-                        </Link>
-                        <Link
-                            to="/professional-showcase"
-                            className={`nav-link${isProfessionalActive ? ' nav-link--active' : ''}`}
-                            aria-current={isProfessionalActive ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            GENERAL
-                        </Link>
-                        <Link
-                            to="/restaurant-showcase"
-                            className={`nav-link${isRestaurantActive ? ' nav-link--active' : ''}`}
-                            aria-current={isRestaurantActive ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            RESTAURANT
-                        </Link>
-                        <Link
-                            to="/student-showcase"
-                            className={`nav-link${isStudentActive ? ' nav-link--active' : ''}`}
-                            aria-current={isStudentActive ? 'page' : undefined}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            STUDENT
-                        </Link>
-{/* <Link
-                            to="/resume"
-                            className={`nav-link${pathname === '/resume' ? ' nav-link--active' : ''}`}
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            RESUME
-                        </Link> */}
-                    </div>
-                </div>
-
-                <div className="navbar-right">
-                    <div className="nav-actions">
-                        {isLoggedIn ? (
-                            <div className="nav-user-area" ref={avatarMenuRef}>
-                                <button
-                                    type="button"
-                                    className="nav-avatar-circle"
-                                    onClick={() => setAvatarMenuOpen((v) => !v)}
-                                    aria-expanded={avatarMenuOpen}
-                                    aria-haspopup="true"
-                                    aria-label="Profile menu"
-                                >
-                                    {user?.photoURL ? (
-                                        <img src={user.photoURL} alt="" />
-                                    ) : (
-                                        <span>{userInitial}</span>
-                                    )}
-                                </button>
-                                {avatarMenuOpen && (
-                                    <div className="nav-dropdown" role="menu">
-                                        <button type="button" role="menuitem" onClick={() => { setAvatarMenuOpen(false); navigate('/profile'); }}>Dashboard</button>
-                                        <button type="button" role="menuitem" onClick={() => { setAvatarMenuOpen(false); handleLogout(); }}>Logout</button>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <Link
-                                to="/login"
-                                className="nav-profile-signin"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                Sign in
-                            </Link>
-                        )}
-                    </div>
-
-                    <button className={`nav-toggle ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </button>
-                </div>
-            </div>
+        <nav className="mkt-nav-links" aria-label="Primary">
+          {LINKS.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`mkt-nav-link${link.match(pathname) ? ' is-active' : ''}`}
+              aria-current={link.match(pathname) ? 'page' : undefined}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
-    );
-}
 
+        <div className="mkt-nav-actions">
+          {user ? (
+            <div className="mkt-nav-user" ref={menuRef}>
+              <button
+                type="button"
+                className="mkt-nav-avatar"
+                aria-label="Account menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                {user.photoURL ? <img src={user.photoURL} alt="" /> : <span>{initial}</span>}
+              </button>
+              {menuOpen && (
+                <div className="mkt-nav-dropdown" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate('/profile'); }}>
+                    Dashboard
+                  </button>
+                  <button type="button" role="menuitem" onClick={handleLogout}>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to="/login" className="mkt-nav-cta">Sign up free</Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

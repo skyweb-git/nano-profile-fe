@@ -1,0 +1,105 @@
+import { generalProfileAPI, landingArtistAPI } from '../services/api';
+
+/** Extract a Nano username from free text, @handle, or profile URL. */
+export function extractNanoUsername(raw) {
+  if (!raw) return '';
+  const text = String(raw).trim();
+  const linkMatch = text.match(/\/(?:link|artist|a|founder|company|restaurant)\/([a-zA-Z0-9_.-]+)/i);
+  const value = linkMatch && linkMatch[1] ? linkMatch[1] : text.replace(/^@+/, '').trim();
+  return value.toLowerCase();
+}
+
+function mapGeneralData(d, fallbackUsername) {
+  const type = d.profileType || 'general';
+  const username = (d.username || fallbackUsername).toLowerCase();
+  return {
+    name: (d.name || '').replace(/\|/g, ' ').trim() || `@${username}`,
+    role:
+      d.title ||
+      d.experience ||
+      (type === 'founder' ? 'Founder' : type === 'artist' ? 'Artist' : 'Team Member'),
+    photo: d.photo || '',
+    profileType: type,
+    username,
+    artistId: type === 'artist' ? username : undefined
+  };
+}
+
+function mapArtistData(a, fallbackUsername) {
+  const id = (a.artistId || fallbackUsername).toLowerCase();
+  return {
+    name: (a.name || '').replace(/\|/g, ' ').trim() || `@${id}`,
+    role: a.experience || a.specialization || a.title || 'Artist',
+    photo: a.photo || '',
+    profileType: 'artist',
+    username: id,
+    artistId: id
+  };
+}
+
+async function fetchGeneral(username) {
+  const res = await generalProfileAPI.getByUsername(username);
+  return res && res.data ? mapGeneralData(res.data, username) : null;
+}
+
+async function fetchArtist(username) {
+  const res = await landingArtistAPI.getPublicProfile(username);
+  return res && res.data ? mapArtistData(res.data, username) : null;
+}
+
+/**
+ * Live-resolve a Nano profile.
+ * hintType 'artist' → artist API first (avoids general-profile 404s for artists).
+ */
+export async function resolveNanoProfile(usernameOrUrl, hintType) {
+  const username = extractNanoUsername(usernameOrUrl);
+  if (!username) return null;
+
+  const preferArtist = hintType === 'artist';
+  const primary = preferArtist ? fetchArtist : fetchGeneral;
+  const secondary = preferArtist ? fetchGeneral : fetchArtist;
+
+  try {
+    const hit = await primary(username);
+    if (hit) return hit;
+  } catch (_) {
+    /* try secondary */
+  }
+
+  try {
+    const hit = await secondary(username);
+    if (hit) return hit;
+  } catch (_) {
+    /* not found */
+  }
+
+  return null;
+}
+
+/** Merge stored team stub with live fields (fallback to stub). */
+export function mergeLiveTeamMember(stored, live) {
+  const username = extractNanoUsername(
+    live?.username || stored?.nanoUsername || stored?.username || stored?.artistId || ''
+  );
+  if (!live) {
+    return {
+      ...stored,
+      name: (stored?.name || '').replace(/\|/g, ' ').trim() || (username ? `@${username}` : 'Team Member'),
+      role: (stored?.role || 'Team Member').replace(/\|/g, ' ').trim(),
+      photo: stored?.photo || '',
+      nanoUsername: username,
+      username,
+      profileType: stored?.profileType || (stored?.artistId ? 'artist' : 'general')
+    };
+  }
+  return {
+    ...stored,
+    name: live.name,
+    role: live.role,
+    photo: live.photo,
+    nanoUsername: live.username || username,
+    username: live.username || username,
+    artistId: live.profileType === 'artist' ? live.username || username : stored?.artistId,
+    profileType: live.profileType
+  };
+}

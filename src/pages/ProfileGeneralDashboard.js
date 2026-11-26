@@ -17,6 +17,8 @@ import ProfileGeneralPlatforms from './ProfileGeneralPlatforms';
 import ProfileGeneralDesign from './ProfileGeneralDesign';
 import ProfileGeneralLinkArt from './ProfileGeneralLinkArt';
 import { generalProfileAPI } from '../services/api';
+import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
+import { extractNanoUsername, resolveNanoProfile } from '../utils/resolveNanoProfile';
 const formatSentenceCase = (text) => {
   if (!text) return '';
   let formatted = text.replace(/,([^\s])/g, ', $1');
@@ -128,10 +130,17 @@ export default function ProfileGeneralDashboard(props) {
     }
   });
 
-  const isFounder = dashboardTitle === 'Founder Profile' || artist?.profileType === 'founder';
+  const isCompany = dashboardTitle === 'Company Profile' || artist?.profileType === 'company';
+  const isFounder = isCompany || dashboardTitle === 'Founder Profile' || artist?.profileType === 'founder' || artist?.profileType === 'company';
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [newMemberUsername, setNewMemberUsername] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
+  const storedCoFounders = Array.isArray(
+    heroUpdates?.coFounders !== undefined ? heroUpdates.coFounders : artist?.coFounders
+  )
+    ? (heroUpdates?.coFounders !== undefined ? heroUpdates.coFounders : artist?.coFounders)
+    : [];
+  const liveCoFounders = useLiveTeamMembers(storedCoFounders);
   const [memberFetchMsg, setMemberFetchMsg] = useState('');
   const [isUploadingDeck, setIsUploadingDeck] = useState(false);
 
@@ -290,7 +299,7 @@ export default function ProfileGeneralDashboard(props) {
       try {
         const cleanData = JSON.parse(JSON.stringify({
           ...artist,
-          profileType: isFounder ? 'founder' : (artist?.profileType || 'general'),
+          profileType: isCompany ? 'company' : (isFounder ? 'founder' : (artist?.profileType || 'general')),
           companyName: heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || ''),
           companyWebsite: heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || ''),
           foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
@@ -690,32 +699,85 @@ export default function ProfileGeneralDashboard(props) {
     </div>
   );
 
-  const renderPhotoEditor = () => (
+  const renderPhotoEditor = () => {
+    const photoAspect = (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
+      ? 'landscape'
+      : 'portrait';
+    const cropAspect = photoAspect === 'landscape' ? (16 / 9) : 1;
+    const setPhotoAspect = (next) => {
+      setHeroUpdates(prev => ({ ...prev, photoAspect: next }));
+      setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, photoAspect: next } : a));
+      if (handleUpdateHeroField) handleUpdateHeroField('photoAspect', next);
+    };
+
+    return (
     <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-      {renderEditorHeader("Upload Profile Images", "showPhoto")}
+      {renderEditorHeader(isCompany ? "Company Logo" : "Upload Profile Images", "showPhoto")}
       
-      {/* Avatar Photo */}
+      {isCompany && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <h4 style={{ color: '#475569', fontSize: '0.9rem', margin: '0 0 0.75rem 0' }}>Image layout</h4>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            {[
+              { id: 'portrait', label: 'Portrait', hint: 'Tall frame' },
+              { id: 'landscape', label: 'Landscape', hint: 'Wide banner' }
+            ].map(opt => {
+              const active = photoAspect === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setPhotoAspect(opt.id)}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem 0.85rem',
+                    borderRadius: '10px',
+                    border: active ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                    background: active ? '#0f172a' : '#ffffff',
+                    color: active ? '#ffffff' : '#334155',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{opt.label}</div>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.75, marginTop: 2 }}>{opt.hint}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Avatar / Company Logo */}
       <div style={{ marginBottom: '1rem' }}>
-        <h4 style={{ color: '#475569', fontSize: '1rem', margin: '0 0 1rem 0' }}>Profile Avatar</h4>
+        <h4 style={{ color: '#475569', fontSize: '1rem', margin: '0 0 1rem 0' }}>{isCompany ? 'Company Logo' : 'Profile Avatar'}</h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            borderRadius: '50%', 
+            width: isCompany ? (photoAspect === 'landscape' ? '140px' : '96px') : '80px', 
+            height: isCompany ? (photoAspect === 'landscape' ? '80px' : '120px') : '80px', 
+            borderRadius: isCompany ? '10px' : '50%', 
             overflow: 'hidden', 
             background: '#e2e8f0', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            position: 'relative'
+            position: 'relative',
+            border: isCompany ? '1px solid #cbd5e1' : 'none',
+            flexShrink: 0
           }}>
-            {artist?.photo ? (
-              <img src={artist.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {(isCompany ? artist?.companyImage : artist?.photo) ? (
+              <img
+                src={isCompany ? artist.companyImage : artist.photo}
+                alt={isCompany ? 'Company logo' : 'Avatar'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             ) : (
-              <span style={{ fontSize: '2rem', color: '#64748b' }}>{avatarLetter}</span>
+              <span style={{ fontSize: isCompany ? '0.75rem' : '2rem', color: '#64748b', textAlign: 'center', padding: '0 6px' }}>
+                {isCompany ? 'Logo' : avatarLetter}
+              </span>
             )}
             
-            {isUploading === 'photo' && (
+            {(isUploading === 'photo' || isUploading === 'companyImage') && (
               <div style={{
                 position: 'absolute',
                 top: 0,
@@ -744,28 +806,39 @@ export default function ProfileGeneralDashboard(props) {
             )}
           </div>
           <label style={{ 
-            background: isUploading === 'photo' ? '#94a3b8' : '#2563eb', 
+            background: (isUploading === 'photo' || isUploading === 'companyImage') ? '#94a3b8' : '#2563eb', 
             color: '#fff', 
             padding: '0.6rem 1.2rem', 
             borderRadius: '8px', 
             fontWeight: 600, 
-            cursor: isUploading === 'photo' ? 'not-allowed' : 'pointer', 
+            cursor: (isUploading === 'photo' || isUploading === 'companyImage') ? 'not-allowed' : 'pointer', 
             fontSize: '0.85rem',
-            pointerEvents: isUploading === 'photo' ? 'none' : 'auto',
+            pointerEvents: (isUploading === 'photo' || isUploading === 'companyImage') ? 'none' : 'auto',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            {isUploading === 'photo' ? 'Uploading...' : 'Choose New Avatar'}
+            {(isUploading === 'photo' || isUploading === 'companyImage')
+              ? 'Uploading...'
+              : (isCompany ? 'Upload Company Logo' : 'Choose New Avatar')}
             <input
               type="file"
               accept="image/*"
               style={{ display: 'none' }}
-              disabled={isUploading === 'photo'}
-              onChange={(e) => handlePickAndCrop(e, 1, (file) => handleUploadField('photo', file))}
+              disabled={isUploading === 'photo' || isUploading === 'companyImage'}
+              onChange={(e) => handlePickAndCrop(
+                e,
+                cropAspect,
+                (file) => handleUploadField(isCompany ? 'companyImage' : 'photo', file)
+              )}
             />
           </label>
         </div>
+        {isCompany && (
+          <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+            Use your company logo here — not a personal photo. Choose portrait or landscape above.
+          </p>
+        )}
       </div>
 
       {renderMobileToggle("showPhoto")}
@@ -776,7 +849,8 @@ export default function ProfileGeneralDashboard(props) {
         Done
       </button>
     </div>
-  );
+    );
+  };
 
   const renderAboutEditor = () => (
     <div style={isMobileViewport ? { padding: '0 0.5rem', width: '100%', boxSizing: 'border-box' } : { background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
@@ -956,12 +1030,59 @@ export default function ProfileGeneralDashboard(props) {
         {renderEditorHeader("Company & Venture", "showCompany")}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-          {/* Company Image / Banner */}
+          {/* Company Image / Logo */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>Company Image / Banner</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
+              {isCompany ? 'Company Logo' : 'Company Image / Banner'}
+            </label>
+            {isCompany && (
+              <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.75rem' }}>
+                {[
+                  { id: 'portrait', label: 'Portrait' },
+                  { id: 'landscape', label: 'Landscape' }
+                ].map(opt => {
+                  const currentAspect = (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
+                    ? 'landscape'
+                    : 'portrait';
+                  const active = currentAspect === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setHeroUpdates(prev => ({ ...prev, photoAspect: opt.id }));
+                        setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, photoAspect: opt.id } : a));
+                        if (handleUpdateHeroField) handleUpdateHeroField('photoAspect', opt.id);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: '10px',
+                        border: active ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                        background: active ? '#0f172a' : '#ffffff',
+                        color: active ? '#ffffff' : '#334155',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {compImg && (
-              <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden', marginBottom: '0.75rem', border: '1px solid #cbd5e1' }}>
-                <img src={compImg} alt="Company Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                height: isCompany && (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) !== 'landscape' ? '220px' : '160px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '0.75rem',
+                border: '1px solid #cbd5e1'
+              }}>
+                <img src={compImg} alt="Company Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button
                   type="button"
                   onClick={() => {
@@ -991,7 +1112,9 @@ export default function ProfileGeneralDashboard(props) {
               cursor: isUploading === 'companyImage' ? 'not-allowed' : 'pointer',
               opacity: isUploading === 'companyImage' ? 0.7 : 1
             }}>
-              {isUploading === 'companyImage' ? 'Uploading Image...' : (compImg ? 'Change Company Image' : '+ Upload Company Image')}
+              {isUploading === 'companyImage'
+                ? 'Uploading Image...'
+                : (compImg ? (isCompany ? 'Change Company Logo' : 'Change Company Image') : (isCompany ? '+ Upload Company Logo' : '+ Upload Company Image'))}
               <input
                 type="file"
                 accept="image/*"
@@ -1000,8 +1123,14 @@ export default function ProfileGeneralDashboard(props) {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  const currentAspect = (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
+                    ? 'landscape'
+                    : 'portrait';
+                  const cropRatio = isCompany
+                    ? (currentAspect === 'landscape' ? (16 / 9) : 1)
+                    : (16 / 9);
                   if (handlePickAndCrop) {
-                    handlePickAndCrop(e, 16 / 9, async (croppedFile) => {
+                    handlePickAndCrop(e, cropRatio, async (croppedFile) => {
                       if (handleUploadField) {
                         await handleUploadField('companyImage', croppedFile);
                       }
@@ -1356,40 +1485,43 @@ export default function ProfileGeneralDashboard(props) {
       let raw = newMemberUsername.trim();
       if (!raw) return;
 
-      const linkMatch = raw.match(/\/link\/([a-zA-Z0-9_.-]+)/i);
-      let cleanNano = linkMatch && linkMatch[1] ? linkMatch[1] : raw.replace(/^@+/, '').trim();
+      const linkMatch = raw.match(/\/(?:link|artist|a|founder|company|restaurant)\/([a-zA-Z0-9_.-]+)/i);
+      let cleanNano = (linkMatch && linkMatch[1] ? linkMatch[1] : raw.replace(/^@+/, '').trim())
+        .toLowerCase()
+        .trim();
       if (!cleanNano) return;
+
+      const alreadyAdded = coFounders.some((cf) => {
+        const existing = (cf.nanoUsername || cf.username || cf.artistId || '').replace(/^@+/, '').toLowerCase();
+        return existing === cleanNano;
+      });
+      if (alreadyAdded) {
+        setMemberFetchMsg(`@${cleanNano} is already on the team.`);
+        return;
+      }
 
       setIsAddingMember(true);
       setMemberFetchMsg(`Fetching profile @${cleanNano}...`);
 
-      let fetchedName = '';
-      let fetchedRole = '';
-      let fetchedPhoto = '';
+      const live = await resolveNanoProfile(cleanNano);
+      setIsAddingMember(false);
 
-      try {
-        const res = await generalProfileAPI.getByUsername(cleanNano);
-        if (res && res.data) {
-          fetchedName = (res.data.name || '').replace(/\|/g, ' ').trim();
-          fetchedRole = res.data.title || res.data.experience || (res.data.profileType === 'founder' ? 'Founder' : 'Team Member');
-          fetchedPhoto = res.data.photo || '';
-        }
-      } catch (err) {
-        console.warn('Could not fetch Nano profile by username:', cleanNano, err);
-      } finally {
-        setIsAddingMember(false);
-        setMemberFetchMsg('');
+      if (!live) {
+        setMemberFetchMsg(`No Nano profile found for @${cleanNano}. Check the username and try again.`);
+        return;
       }
 
-      if (!fetchedName) fetchedName = `@${cleanNano}`;
-      if (!fetchedRole) fetchedRole = 'Team Member';
+      setMemberFetchMsg('');
+      cleanNano = live.username || cleanNano;
 
       const updated = [...coFounders, {
-        name: fetchedName,
-        role: fetchedRole,
-        photo: fetchedPhoto,
+        name: live.name,
+        role: live.role,
+        photo: live.photo,
         nanoUsername: cleanNano,
-        username: cleanNano
+        username: cleanNano,
+        artistId: live.profileType === 'artist' ? cleanNano : undefined,
+        profileType: live.profileType
       }];
       setHeroUpdates(prev => ({ ...prev, coFounders: updated }));
       setNewMemberUsername('');
@@ -1456,7 +1588,7 @@ export default function ProfileGeneralDashboard(props) {
                       handleAddMember();
                     }
                   }}
-                  placeholder="Enter Nano username (e.g. priya)"
+                  placeholder="Enter Nano username (e.g. abbu or vedant)"
                   disabled={isAddingMember}
                 />
               </div>
@@ -1492,7 +1624,12 @@ export default function ProfileGeneralDashboard(props) {
               </button>
             </div>
             {memberFetchMsg && (
-              <div style={{ fontSize: '0.78rem', color: '#2563eb', marginTop: '6px', fontWeight: 500 }}>
+              <div style={{
+                fontSize: '0.78rem',
+                color: /no nano profile|already on the team/i.test(memberFetchMsg) ? '#dc2626' : '#2563eb',
+                marginTop: '6px',
+                fontWeight: 500
+              }}>
                 {memberFetchMsg}
               </div>
             )}
@@ -1506,10 +1643,10 @@ export default function ProfileGeneralDashboard(props) {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {coFounders.map((cf, idx) => {
-                  const uname = (cf.nanoUsername || cf.username || '').replace(/^@+/, '');
+                {(liveCoFounders.length ? liveCoFounders : coFounders).map((cf, idx) => {
+                  const uname = extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || '');
                   return (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div key={`${uname || 'm'}-${idx}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
                           width: '38px',
@@ -1565,7 +1702,19 @@ export default function ProfileGeneralDashboard(props) {
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button
               onClick={() => {
-                handleUpdateHeroField('coFounders', coFounders).then(() => {
+                const toSave = (liveCoFounders.length ? liveCoFounders : coFounders).map((cf) => ({
+                  name: cf.name || '',
+                  role: cf.role || 'Team Member',
+                  photo: cf.photo || '',
+                  nanoUsername: extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || ''),
+                  username: extractNanoUsername(cf.nanoUsername || cf.username || cf.artistId || ''),
+                  artistId: cf.profileType === 'artist'
+                    ? extractNanoUsername(cf.artistId || cf.nanoUsername || cf.username || '')
+                    : undefined,
+                  profileType: cf.profileType || (cf.artistId ? 'artist' : 'general')
+                }));
+                setHeroUpdates((prev) => ({ ...prev, coFounders: toSave }));
+                handleUpdateHeroField('coFounders', toSave).then(() => {
                   setActiveEditor('default');
                 });
               }}
@@ -1679,7 +1828,7 @@ export default function ProfileGeneralDashboard(props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
           {renderQuickAccessButton('name', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>, "Edit Name", "showName", "Change your public display name")}
           
-          {renderQuickAccessButton('photo', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>, "Profile Image", "showPhoto", "Upload and toggle your profile photo")}
+          {renderQuickAccessButton('photo', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>, isCompany ? "Company Logo" : "Profile Image", "showPhoto", isCompany ? "Upload your company logo (portrait or landscape)" : "Upload and toggle your profile photo")}
           
           {renderQuickAccessButton('location', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, "Location", "showLocation", "Update city and state visibility")}
           
@@ -1760,7 +1909,7 @@ export default function ProfileGeneralDashboard(props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {myArtists && myArtists[0] && (() => {
-              const profileUrl = `${frontendBase}/link/${myArtists[0].artistId}`;
+              const profileUrl = `${frontendBase}${isCompany ? `/company/${myArtists[0].artistId}` : isFounder ? `/founder/${myArtists[0].artistId}` : `/link/${myArtists[0].artistId}`}`;
               return (
                 <>
                   <button
@@ -1866,7 +2015,7 @@ export default function ProfileGeneralDashboard(props) {
               key={previewKey}
               onLoad={handleIframeLoad}
               title="General Profile Preview"
-              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1${isFounder ? '&profileType=founder' : ''}`}
+              src={`${frontendBase}${isCompany ? `/company/${myArtists[0].artistId}` : isFounder ? `/founder/${myArtists[0].artistId}` : `/link/${myArtists[0].artistId}`}?no_redirect=1${isCompany ? '&profileType=company' : isFounder ? '&profileType=founder' : ''}`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             />
           ) : null}
@@ -1908,7 +2057,7 @@ export default function ProfileGeneralDashboard(props) {
                   <div className="skb" style={{ width: 110, height: 28 }} />
                   <div className="skb" style={{ width: 80, height: 16 }} />
                 </div>
-                <div className="skb" style={{ width: '100%', aspectRatio: '1/1', maxHeight: '380px', borderRadius: 2 }} />
+                <div className="skb" style={{ width: '100%', aspectRatio: isCompany && artist?.photoAspect === 'landscape' ? '16/9' : '1/1', maxHeight: isCompany && artist?.photoAspect === 'landscape' ? '240px' : '380px', borderRadius: 2 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px 0' }}>
                   <div className="skb-red" style={{ width: 120, height: 12 }} />
                   <div className="skb" style={{ width: '80%', height: 48 }} />
@@ -2404,7 +2553,7 @@ export default function ProfileGeneralDashboard(props) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {myArtists && myArtists[0] && (() => {
-            const profileUrl = `${frontendBase}/link/${myArtists[0].artistId}`;
+            const profileUrl = `${frontendBase}${isCompany ? `/company/${myArtists[0].artistId}` : isFounder ? `/founder/${myArtists[0].artistId}` : `/link/${myArtists[0].artistId}`}`;
             return (
               <>
                 <button
@@ -2497,7 +2646,7 @@ export default function ProfileGeneralDashboard(props) {
               key={previewKey}
               onLoad={handleIframeLoad}
               title="General Profile Preview"
-              src={`${frontendBase}/link/${myArtists[0].artistId}?no_redirect=1${isFounder ? '&profileType=founder' : ''}`}
+              src={`${frontendBase}${isCompany ? `/company/${myArtists[0].artistId}` : isFounder ? `/founder/${myArtists[0].artistId}` : `/link/${myArtists[0].artistId}`}?no_redirect=1${isCompany ? '&profileType=company' : isFounder ? '&profileType=founder' : ''}`}
               style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             />
           ) : (

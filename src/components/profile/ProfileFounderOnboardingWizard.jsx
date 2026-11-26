@@ -29,6 +29,9 @@ export default function ProfileFounderOnboardingWizard({
   ALL_PLATFORMS,
   photoFile,
   setPhotoFile,
+  photoAspect = 'portrait',
+  setPhotoAspect,
+  isCompanyProfile = false,
   bgFile,
   setBgFile,
 
@@ -400,18 +403,57 @@ export default function ProfileFounderOnboardingWizard({
         {/* ── STEP 3: SHOW YOUR STYLE ── */}
         {onboardingStep === 3 && (
           <div className="onboarding-step fade-in">
-            <h2>Show your style</h2>
-            <p className="onboarding-subtitle">Upload your profile image &amp; vision</p>
+            <h2>{isCompanyProfile ? 'Brand your company' : 'Show your style'}</h2>
+            <p className="onboarding-subtitle">
+              {isCompanyProfile ? 'Upload your company logo & about text' : 'Upload your profile image & vision'}
+            </p>
+            {isCompanyProfile && typeof setPhotoAspect === 'function' && (
+              <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                {[
+                  { id: 'portrait', label: 'Portrait' },
+                  { id: 'landscape', label: 'Landscape' }
+                ].map(opt => {
+                  const active = (photoAspect || 'portrait') === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setPhotoAspect(opt.id)}
+                      style={{
+                        flex: 1,
+                        padding: '0.7rem 0.85rem',
+                        borderRadius: '10px',
+                        border: active ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                        background: active ? '#0f172a' : '#ffffff',
+                        color: active ? '#ffffff' : '#334155',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.88rem'
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="onboarding-images">
               <div className="image-upload-box">
-                <label>Profile Image</label>
+                <label>{isCompanyProfile ? 'Company Logo' : 'Profile Image'}</label>
                 <button
                   type="button"
                   className="upload-trigger-btn"
                   onClick={() => { if (photoInputRef.current) { photoInputRef.current.value = ''; photoInputRef.current.click(); } }}
-                  aria-label="Upload profile image"
+                  aria-label={isCompanyProfile ? 'Upload company logo' : 'Upload profile image'}
                 >
-                  <div className="upload-preview-circle">
+                  <div
+                    className="upload-preview-circle"
+                    style={isCompanyProfile ? {
+                      borderRadius: '12px',
+                      width: photoAspect === 'landscape' ? '160px' : '96px',
+                      height: photoAspect === 'landscape' ? '90px' : '120px'
+                    } : undefined}
+                  >
                     {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Preview" /> : <span>+</span>}
                   </div>
                 </button>
@@ -419,7 +461,11 @@ export default function ProfileFounderOnboardingWizard({
                   ref={photoInputRef}
                   type="file"
                   style={{ display: 'none' }}
-                  onChange={e => handlePickAndCrop(e, 1, file => setPhotoFile(file))}
+                  onChange={e => handlePickAndCrop(
+                    e,
+                    isCompanyProfile && photoAspect === 'landscape' ? (16 / 9) : 1,
+                    file => setPhotoFile(file)
+                  )}
                   accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/avif,image/heic,image/heif,image/svg+xml"
                 />
               </div>
@@ -427,12 +473,14 @@ export default function ProfileFounderOnboardingWizard({
 
             <div className="onboarding-fields" style={{ marginTop: '1.5rem' }}>
               <div className="onboarding-field">
-                <label>Founder Bio &amp; Vision</label>
+                <label>{isCompanyProfile ? 'About the Company' : 'Founder Bio & Vision'}</label>
                 <textarea
                   className="onboarding-textarea"
                   value={formData.bio}
                   onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                  placeholder="Tell us about yourself, your mission, and the venture you are building..."
+                  placeholder={isCompanyProfile
+                    ? 'Describe what your company builds and who you serve...'
+                    : 'Tell us about yourself, your mission, and the venture you are building...'}
                   rows={3}
                 />
               </div>

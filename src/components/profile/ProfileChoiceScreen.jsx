@@ -12,6 +12,7 @@ export default function ProfileChoiceScreen({
   handleSelectGeneralMode,
   handleSelectRestaurantMode,
   handleSelectFounderMode,
+  handleSelectCompanyMode,
 }) {
   return (
     <div className="profile-page profile-login-wrap">
@@ -31,6 +32,110 @@ export default function ProfileChoiceScreen({
         </div>
 
         <div className="profile-choice-grid" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '3.5rem' }}>
+          {profileLock !== 'artist' && (
+            <button
+              onClick={handleSelectFounderMode}
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transition: 'transform 0.2s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 16px 40px rgba(200,0,26,0.12)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 12px 32px rgba(0,0,0,0.06)'; }}
+            >
+              <div className="circle-icon" style={{
+                borderRadius: '50%',
+                width: '140px',
+                height: '140px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#ffffff',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.06)',
+                marginBottom: '1.25rem',
+                transition: 'box-shadow 0.2s ease',
+                position: 'relative'
+              }}>
+                <div style={{
+                  width: '74px',
+                  height: '74px',
+                  borderRadius: '50%',
+                  background: 'rgba(200, 0, 26, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2.5rem'
+                }}>
+                  🚀
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Founder</p>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Startup &amp; Executive ID</div>
+              </div>
+            </button>
+          )}
+
+          {profileLock !== 'artist' && (
+            <button
+              onClick={handleSelectCompanyMode}
+              type="button"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transition: 'transform 0.2s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 16px 40px rgba(15,23,42,0.12)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 12px 32px rgba(0,0,0,0.06)'; }}
+            >
+              <div className="circle-icon" style={{
+                borderRadius: '50%',
+                width: '140px',
+                height: '140px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#ffffff',
+                border: '1px solid rgba(0,0,0,0.06)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.06)',
+                marginBottom: '1.25rem',
+                transition: 'box-shadow 0.2s ease',
+                position: 'relative'
+              }}>
+                <div style={{
+                  width: '74px',
+                  height: '74px',
+                  borderRadius: '50%',
+                  background: 'rgba(15, 23, 42, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2.5rem'
+                }}>
+                  🏢
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Company</p>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Brand &amp; Business ID</div>
+              </div>
+            </button>
+          )}
+
           {profileLock !== 'general_restaurant' && (
             <button
               onClick={handleSelectArtistMode}
@@ -165,56 +270,6 @@ export default function ProfileChoiceScreen({
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Restaurant</p>
                   <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Tap to Order</div>
-                </div>
-              </button>
-
-              <button
-                onClick={handleSelectFounderMode}
-                type="button"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  margin: 0,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  transition: 'transform 0.2s ease',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 16px 40px rgba(200,0,26,0.12)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.querySelector('.circle-icon').style.boxShadow = '0 12px 32px rgba(0,0,0,0.06)'; }}
-              >
-                <div className="circle-icon" style={{
-                  borderRadius: '50%',
-                  width: '140px',
-                  height: '140px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#ffffff',
-                  border: '1px solid rgba(0,0,0,0.06)',
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.06)',
-                  marginBottom: '1.25rem',
-                  transition: 'box-shadow 0.2s ease',
-                  position: 'relative'
-                }}>
-                  <div style={{
-                    width: '74px',
-                    height: '74px',
-                    borderRadius: '50%',
-                    background: 'rgba(200, 0, 26, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '2.5rem'
-                  }}>
-                    🚀
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 4px', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>Founder</p>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Startup &amp; Executive ID</div>
                 </div>
               </button>
             </>

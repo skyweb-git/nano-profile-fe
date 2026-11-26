@@ -578,6 +578,23 @@
   filter: grayscale(0);
 }
 
+/* Company logo — portrait (default) or landscape */
+.artist-public-wrapper .hero-profile-image.hero-company-logo {
+  filter: none;
+  background: rgba(10, 10, 10, 0.03);
+  object-fit: contain;
+}
+.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-portrait {
+  height: 400px;
+  object-fit: cover;
+}
+.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-landscape {
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: 280px;
+  object-fit: cover;
+}
+
 /* ── NANO PREMIUM LINK ANIMATIONS ── */
 @keyframes nano-buzz {
   0%, 20%, 100% { transform: translateX(0); }

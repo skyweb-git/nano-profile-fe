@@ -40,19 +40,10 @@ body {
   color: #0f172a !important;
 }
 
-/* 2. Hero Section Background & Layout */
+/* Legacy hero selectors kept only for older pages; marketing uses .mkt-* */
 .home-hero-section {
   background: var(--nano-bg) !important;
   color: #0f172a !important;
-}
-
-@media (max-width: 768px) {
-  .home-hero-section {
-    padding-top: 115px !important;
-  }
-  .home-hero-section .hero-content {
-    padding-top: 0 !important;
-  }
 }
 
 /* Particle adjustments: make sure they blend nicely */
@@ -82,12 +73,76 @@ body {
   -webkit-text-fill-color: transparent !important;
 }
 
-/* Hero Description */
+/* Hero Description (below title) */
 .home-hero-section .hero-description {
   color: #475569 !important;
+  max-width: 34rem;
+  margin: 0 0 1.25rem !important;
+  font-size: clamp(0.95rem, 1.15vw, 1.1rem) !important;
+  line-height: 1.55 !important;
 }
 
-/* 3. Hero Feature Cards (The Artist, The Student, The Chef) */
+.home-hero-section .hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin: 0 0 1.75rem;
+}
+
+.home-hero-section .hero-cta-primary,
+.home-hero-section .hero-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0.75rem 1.35rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.home-hero-section .hero-cta-primary {
+  background: #C8001A;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(200, 0, 26, 0.22);
+}
+
+.home-hero-section .hero-cta-primary:hover {
+  background: #b00016;
+  transform: translateY(-1px);
+}
+
+.home-hero-section .hero-cta-secondary {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+}
+
+.home-hero-section .hero-cta-secondary:hover {
+  border-color: rgba(200, 0, 26, 0.35);
+  color: #C8001A;
+}
+
+@media (max-width: 1024px) {
+  .home-hero-section .hero-description {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .home-hero-section .hero-cta-row {
+    justify-content: center;
+  }
+}
+
+/* Linktree-like profile type pills */
+.home-hero-section .hero-feature-item {
+  border-radius: 999px !important;
+  padding: 14px 18px !important;
+}
+
+/* 3. Hero Feature Cards (The Artist, The Founder, The Chef) */
 .home-hero-section .hero-feature-item {
   background: var(--nano-card-glass) !important;
   border: 1px solid var(--nano-border-glass) !important;
@@ -110,14 +165,28 @@ body {
   color: #C8001A !important;
 }
 
-.home-hero-section .feature-icon svg {
+.home-hero-section .feature-icon svg,
+.home-hero-section .feature-icon .material-symbols-outlined {
   color: #C8001A !important;
 }
 
-.home-hero-section .artist-icon svg { color: #C8001A !important; }
-.home-hero-section .professional-icon svg { color: #7c3aed !important; }
-.home-hero-section .student-icon svg { color: #0284c7 !important; }
-.home-hero-section .chef-icon svg { color: #b45309 !important; }
+.home-hero-section .feature-icon .material-symbols-outlined {
+  font-size: 24px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+  user-select: none;
+}
+
+.home-hero-section .artist-icon svg,
+.home-hero-section .artist-icon .material-symbols-outlined { color: #C8001A !important; }
+.home-hero-section .professional-icon svg,
+.home-hero-section .professional-icon .material-symbols-outlined { color: #7c3aed !important; }
+.home-hero-section .founder-icon svg,
+.home-hero-section .founder-icon .material-symbols-outlined { color: #0284c7 !important; }
+.home-hero-section .company-icon svg,
+.home-hero-section .company-icon .material-symbols-outlined { color: #0f766e !important; }
+.home-hero-section .chef-icon svg,
+.home-hero-section .chef-icon .material-symbols-outlined { color: #b45309 !important; }
 
 /* Feature Icon Hover Accent updates */
 .home-hero-section .hero-feature-item:hover .feature-icon {
@@ -308,10 +377,10 @@ body {
   color: #C8001A !important;
 }
 
-/* 7. Navbar Light Overrides */
+/* 7. Navbar — floating pill shell (details in HomeNavbar.overrides.css) */
 .nano-navbar {
-  background: rgba(250, 249, 246, 0.8) !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+  background: transparent !important;
+  border-bottom: none !important;
 }
 
 .nano-navbar .logo-text {
@@ -323,7 +392,7 @@ body {
 }
 
 .nano-navbar .nav-link {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 .nano-navbar .nav-link:hover,
@@ -359,11 +428,21 @@ body {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02) !important;
 }
 
+.nav-profile-signin {
+  background: #0f172a !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18) !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+}
+
 .nav-profile-signin:hover {
-  background: #ffffff !important;
-  border-color: rgba(200, 0, 26, 0.2) !important;
-  color: #C8001A !important;
-  box-shadow: 0 6px 16px rgba(200, 0, 26, 0.06) !important;
+  background: #C8001A !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(200, 0, 26, 0.25) !important;
 }
 
 /* Active Nav Links styling */
@@ -372,8 +451,7 @@ body {
 }
 
 .nav-link.nav-link--active::after {
-  background: linear-gradient(90deg, transparent, #C8001A, transparent) !important;
-  box-shadow: 0 0 12px rgba(200, 0, 26, 0.3) !important;
+  display: none !important;
 }
 
 /* Dropdown Menu overrides */

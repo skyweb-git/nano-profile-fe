@@ -19,12 +19,7 @@ function resolveApiUrl() {
     return url.replace(/\/health\/?$/, '').replace(/\/+$/, '');
   }
 
-  // Local development fallback
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:5000';
-  }
-
-  // Production backend default
+  // Hosted backend default (local override via REACT_APP_API_URL / .env)
   return 'https://api.nanoprofiles.com';
 }
 export const API_URL = resolveApiUrl();

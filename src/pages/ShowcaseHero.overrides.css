@@ -1,3 +1,53 @@
+/* Marketing showcase — Linktree-like spacing with Nano colors */
+.showcase-page {
+  background: #FAF9F6;
+}
+
+.showcase-page .showcase-hero {
+  background: linear-gradient(180deg, #ffffff 0%, #FAF9F6 100%);
+}
+
+.showcase-page .showcase-title {
+  color: #0f172a;
+  letter-spacing: -0.03em;
+}
+
+.showcase-page .showcase-subtitle {
+  color: #475569;
+}
+
+.showcase-page .showcase-cta-primary {
+  background: #C8001A !important;
+  border-radius: 999px !important;
+  box-shadow: 0 10px 24px rgba(200, 0, 26, 0.2);
+}
+
+.showcase-page .showcase-cta-secondary {
+  border-radius: 999px !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.12) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.showcase-page .showcase-feat-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.showcase-page .showcase-cta-section {
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 28px;
+  margin: 0 5% 4rem;
+}
+
+.showcase-page .showcase-cta-section h2,
+.showcase-page .showcase-cta-section p {
+  color: #ffffff;
+}
+
 /* Hero CTAs: stay on one row (bundled .showcase-cta-row uses flex-wrap: wrap) */
 .showcase-hero .showcase-cta-row {
   flex-wrap: nowrap;

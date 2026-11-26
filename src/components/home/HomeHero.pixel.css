@@ -32,17 +32,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 999px;
 }
 
-.home-hero-section .feature-icon svg {
+.home-hero-section .feature-icon svg,
+.home-hero-section .feature-icon .material-symbols-outlined {
   flex-shrink: 0;
   color: #00f2ff; /* High-tech cyan accent */
-  drop-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+  filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.4));
 }
 
-.home-hero-section .artist-icon svg { color: #00f2ff; }
-.home-hero-section .student-icon svg { color: #00ffd5; }
-.home-hero-section .chef-icon svg { color: #ffae00; }
+.home-hero-section .artist-icon svg,
+.home-hero-section .artist-icon .material-symbols-outlined { color: #00f2ff; }
+.home-hero-section .founder-icon svg,
+.home-hero-section .founder-icon .material-symbols-outlined { color: #00ffd5; }
+.home-hero-section .company-icon svg,
+.home-hero-section .company-icon .material-symbols-outlined { color: #2dd4bf; }
+.home-hero-section .chef-icon svg,
+.home-hero-section .chef-icon .material-symbols-outlined { color: #ffae00; }
 
 /* Text column: starts exactly after icon + gap on every card */
 .home-hero-section .feature-info {
@@ -115,6 +122,10 @@
   .home-hero-section .feature-icon svg {
     width: clamp(18px, 5.5vw, 24px);
     height: clamp(18px, 5.5vw, 24px);
+  }
+
+  .home-hero-section .feature-icon .material-symbols-outlined {
+    font-size: clamp(18px, 5.5vw, 24px);
   }
 
   .home-hero-section .feature-name {

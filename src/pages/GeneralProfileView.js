@@ -9,6 +9,7 @@ import { Helmet } from 'react-helmet-async';
 import './GeneralProfileView.css';
 
 import { useShowcaseEmbedHeight } from '../hooks/useShowcaseEmbedHeight';
+import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -101,6 +102,7 @@ function GeneralProfileView() {
   const [showProfileFallback, setShowProfileFallback] = useState(false);
   const [success, setSuccess] = useState('');
   const [showCompanyView, setShowCompanyView] = useState(false);
+  const liveTeamMembers = useLiveTeamMembers(profile?.coFounders || []);
 
   useShowcaseEmbedHeight(isEmbed);
 
@@ -250,6 +252,115 @@ function GeneralProfileView() {
         };
 
         setProfile(MOCK_PROFESSIONAL);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      // Reuses the same founder defaults from ProfileFounderController create flow.
+      if (
+        username === 'mock-founder' ||
+        searchParams.get('type') === 'founder' ||
+        searchParams.get('profileType') === 'founder'
+      ) {
+        const base = window.location.origin;
+        const MOCK_FOUNDER = {
+          username: 'mock-founder',
+          name: 'RAHUL|SHARMA',
+          title: 'Co-Founder & CEO',
+          specialization: 'FinTech, AI, SaaS, Venture Capital',
+          companyName: 'Nexus Tech Labs',
+          companyWebsite: 'https://nexustechlabs.com',
+          foundingYear: '2023',
+          fundingStage: '',
+          teamSize: '',
+          pitchDeckPdf: '',
+          ctaLabel: '',
+          ctaUrl: '',
+          milestones: [
+            { label: '$1.2M Seed Raised' },
+            { label: '50K+ Active Users' },
+            { label: 'Top 5 Product Hunt' }
+          ],
+          coFounders: [
+            { name: 'Priya Sharma', role: 'Co-Founder & CTO', linkedin: 'https://linkedin.com' },
+            { name: 'Aarav Patel', role: 'Head of Product', linkedin: 'https://linkedin.com' }
+          ],
+          showCompany: true,
+          showPitchDeck: false,
+          showCoFounders: true,
+          showMilestones: true,
+          showCta: false,
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          bio: 'Founder building the next generation of intelligent financial infrastructure. Passionate about AI, scalable systems, and building ventures that create long-term impact.',
+          photo: `${base}/indian_general_avatar.png`,
+          banner: `${base}/mock_art_folk.png`,
+          profileType: 'founder',
+          theme: 'custom-theme',
+          font: 'outfit',
+          bioFont: 'outfit',
+          links: [
+            { title: 'LinkedIn', platform: 'linkedin', url: 'https://linkedin.com/in/rahulsharma-mock', order: 0 },
+            { title: 'Twitter / X', platform: 'twitter', url: 'https://x.com/rahulsharma_mock', order: 1 },
+            { title: 'Website', platform: 'website', url: 'https://example.com', order: 2 }
+          ],
+          social: {},
+          gallery: []
+        };
+
+        setProfile(MOCK_FOUNDER);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      if (
+        username === 'mock-company' ||
+        searchParams.get('type') === 'company' ||
+        searchParams.get('profileType') === 'company'
+      ) {
+        const base = window.location.origin;
+        const MOCK_COMPANY = {
+          username: 'mock-company',
+          name: 'SKYWEB|IT',
+          title: 'Technology Company',
+          specialization: 'Software, Cloud, Digital Products',
+          companyName: 'Skyweb IT Solutions',
+          companyWebsite: 'https://skywebdev.xyz',
+          companyDescription: 'Skyweb builds modern digital products, SaaS platforms, and smart identity experiences for growing brands.',
+          foundingYear: '2025',
+          milestones: [
+            { label: 'Product Platforms Shipped' },
+            { label: 'Enterprise & Startup Clients' },
+            { label: 'Full-Stack Delivery' }
+          ],
+          coFounders: [],
+          showCompany: true,
+          showPitchDeck: false,
+          showCoFounders: false,
+          showMilestones: true,
+          showCta: false,
+          city: 'Hyderabad',
+          state: 'Telangana',
+          bio: 'A technology company building scalable digital products, cloud platforms, and modern web experiences for businesses that want to grow faster.',
+          photo: '',
+          photoAspect: 'portrait',
+          banner: `${base}/mock_art_folk.png`,
+          profileType: 'company',
+          theme: 'custom-theme',
+          font: 'outfit',
+          bioFont: 'outfit',
+          links: [
+            { title: 'Website', platform: 'website', url: 'https://skywebdev.xyz', order: 0 },
+            { title: 'LinkedIn', platform: 'linkedin', url: 'https://linkedin.com', order: 1 },
+            { title: 'Email', platform: 'email', url: 'mailto:hello@skywebdev.xyz', order: 2 }
+          ],
+          social: {},
+          gallery: []
+        };
+
+        setProfile(MOCK_COMPANY);
         setError(null);
         setLoading(false);
         return;
@@ -570,7 +681,10 @@ function GeneralProfileView() {
 
 
   const isRestaurant = profile?.profileType === 'restaurant';
-  const isFounder = (!isRestaurant && (profile?.profileType === 'founder' ||
+  const isCompany = profile?.profileType === 'company' ||
+                    searchParams.get('profileType') === 'company' ||
+                    searchParams.get('type') === 'company';
+  const isFounder = (!isRestaurant && (isCompany || profile?.profileType === 'founder' ||
                     searchParams.get('profileType') === 'founder' ||
                     searchParams.get('type') === 'founder' ||
                     Boolean(profile?.companyName || (profile?.milestones && profile.milestones.length > 0) || (profile?.coFounders && profile.coFounders.length > 0) || profile?.pitchDeckPdf)));
@@ -1101,7 +1215,12 @@ function GeneralProfileView() {
   // 2. RENDER STANDARD PUBLIC PROFILE VIEW (Styled same-to-same as Artist profile)
   const isPreview = window.self !== window.top;
 
-  const showPhotoEffectively = profile.photo && (profile.showPhoto !== false || isPreview);
+  const companyPhotoAspect = profile.photoAspect === 'landscape' ? 'landscape' : 'portrait';
+  // Company profiles show company logo only — never a personal/profile avatar
+  const heroPhotoSrc = isCompany
+    ? (profile.companyImage || '')
+    : profile.photo;
+  const showPhotoEffectively = heroPhotoSrc && (profile.showPhoto !== false || isPreview);
   const showLocationEffectively = profile.showLocation !== false || isPreview;
   const showNameEffectively = profile.showName !== false || isPreview;
   const showSpecializationEffectively = profile.showSpecialization !== false || isPreview;
@@ -1193,9 +1312,13 @@ function GeneralProfileView() {
               ...(profile.showPhoto === false ? { border: '2px dashed #ef4444', borderRadius: '4px', padding: '4px', boxSizing: 'border-box' } : {})
             }}>
               <img 
-                src={fixImageUrl(profile.photo)} 
-                alt={profile.name || 'Profile'} 
-                className="hero-profile-image" 
+                src={fixImageUrl(heroPhotoSrc)} 
+                alt={isCompany ? (profile.companyName || profile.name || 'Company logo') : (profile.name || 'Profile')} 
+                className={[
+                  'hero-profile-image',
+                  isCompany ? 'hero-company-logo' : '',
+                  isCompany ? (companyPhotoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait') : ''
+                ].filter(Boolean).join(' ')}
                 style={{ 
                   marginTop: 0, 
                   marginBottom: 0,
@@ -1583,11 +1706,11 @@ function GeneralProfileView() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {(profile.coFounders && profile.coFounders.length > 0) ? (
-                  profile.coFounders.map((cf, idx) => {
+                  (liveTeamMembers.length ? liveTeamMembers : profile.coFounders).map((cf, idx) => {
                     const rawNano = (cf.nanoUsername || cf.username || cf.handle || cf.artistId || '').trim();
                     let nanoUser = '';
                     if (rawNano) {
-                      const linkMatch = rawNano.match(/\/link\/([a-zA-Z0-9_-]+)/);
+                      const linkMatch = rawNano.match(/\/(?:link|artist|a|founder|company|restaurant)\/([a-zA-Z0-9_-]+)/i);
                       nanoUser = linkMatch && linkMatch[1] ? linkMatch[1] : rawNano.replace(/^@+/, '').trim();
                     }
                     if (!nanoUser && cf.name && cf.name.startsWith('@')) {
@@ -1596,10 +1719,14 @@ function GeneralProfileView() {
                     if (!nanoUser && (cf.name || '').toLowerCase().includes('vamshi')) {
                       nanoUser = 'capvamshi';
                     }
-                    const nanoUrl = nanoUser ? `/link/${nanoUser}` : null;
+                    const isArtistMember = cf.profileType === 'artist' || Boolean(cf.artistId);
+                    const nanoUrl = nanoUser
+                      ? (isArtistMember ? `/artist/${nanoUser}` : `/link/${nanoUser}`)
+                      : null;
 
                     const displayName = (cf.name || '').replace(/\|/g, ' ').trim() || (nanoUser ? `@${nanoUser}` : 'Team Member');
                     const displayRole = (cf.role || 'Co-Founder').replace(/\|/g, ' ').trim();
+                    const displayPhoto = cf.photo || '';
 
                     const handleCardClick = (e) => {
                       if (!nanoUrl) return;
@@ -1661,7 +1788,7 @@ function GeneralProfileView() {
                             border: '1px solid rgba(200,0,26,0.2)',
                             flexShrink: 0
                           }}>
-                            {cf.photo ? <img src={cf.photo} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : displayName.charAt(0).toUpperCase()}
+                            {displayPhoto ? <img src={displayPhoto} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : displayName.charAt(0).toUpperCase()}
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0A0A0A', lineHeight: 1.3 }}>

@@ -144,6 +144,17 @@ export default function Profile() {
     if (user?.email) setPrefByEmail(user.email, 'founder');
   }, [profileLock, user]);
 
+  const handleSelectCompanyMode = useCallback(() => {
+    setProfileMode('company');
+    setChoiceSource('manual');
+    if (!profileLock) {
+      setProfileLock('company');
+      setStoredValue(user, PROFILE_LOCK_KEY, 'company');
+    }
+    setStoredValue(user, PROFILE_MODE_KEY, 'company');
+    if (user?.email) setPrefByEmail(user.email, 'company');
+  }, [profileLock, user]);
+
   const handleLogout = async () => {
     try {
       if (user?.email) {
@@ -213,6 +224,12 @@ export default function Profile() {
           return;
         }
 
+        const resCompany = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, 'company');
+        if (resCompany?.data) {
+          setGeneralProfile(resCompany.data);
+          return;
+        }
+
         const resRestaurant = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, 'restaurant');
         if (resRestaurant?.data) {
           setGeneralProfile(resRestaurant.data);
@@ -226,7 +243,11 @@ export default function Profile() {
           return;
         }
       } else {
-        const requestedType = profileMode === 'restaurant' ? 'restaurant' : profileMode === 'founder' ? 'founder' : 'general';
+        const requestedType =
+          profileMode === 'restaurant' ? 'restaurant'
+            : profileMode === 'founder' ? 'founder'
+              : profileMode === 'company' ? 'company'
+                : 'general';
         const res = await generalProfileAPI.getMine(getIdTokenFn, getFirebaseUserFn, requestedType);
         if (res?.data) {
           setGeneralProfile(res.data);
@@ -275,6 +296,13 @@ export default function Profile() {
         setChoiceSource('automatic');
         return;
       }
+
+    if (lock === 'company') {
+      setProfileLock('company');
+      setProfileMode('company');
+      setChoiceSource('automatic');
+      return;
+    }
 
       if (lock) {
       setProfileLock(lock);
@@ -349,6 +377,10 @@ export default function Profile() {
         handleSelectFounderMode();
         return;
       }
+      if (lock === 'company') {
+        handleSelectCompanyMode();
+        return;
+      }
       if (lock === 'general_restaurant') {
         const preferredGeneralMode = getStoredValue(user, GENERAL_FLOW_MODE_KEY) || 'general';
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
@@ -368,8 +400,11 @@ export default function Profile() {
       if (!lock && hasGeneral) {
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
         const likelyFounder = generalProfile?.profileType === 'founder';
+        const likelyCompany = generalProfile?.profileType === 'company';
         if (likelyFounder) {
           handleSelectFounderMode();
+        } else if (likelyCompany) {
+          handleSelectCompanyMode();
         } else if (likelyRestaurant) {
           handleSelectRestaurantMode();
         } else {
@@ -383,8 +418,11 @@ export default function Profile() {
       } else if (hasGeneral && !hasSetupArtist) {
         const likelyRestaurant = generalProfile?.profileType === 'restaurant' || !!(generalProfile?.menuPdf && String(generalProfile.menuPdf).trim());
         const likelyFounder = generalProfile?.profileType === 'founder';
+        const likelyCompany = generalProfile?.profileType === 'company';
         if (likelyFounder) {
           handleSelectFounderMode();
+        } else if (likelyCompany) {
+          handleSelectCompanyMode();
         } else if (likelyRestaurant) {
           handleSelectRestaurantMode();
         } else {
@@ -392,7 +430,7 @@ export default function Profile() {
         }
       }
     }
-  }, [artistsLoading, generalProfileLoading, myArtists, generalProfile, restaurantProfile, profileLock, profileMode, user, handleSelectArtistMode, handleSelectGeneralMode, handleSelectRestaurantMode, handleSelectFounderMode]);
+  }, [artistsLoading, generalProfileLoading, myArtists, generalProfile, restaurantProfile, profileLock, profileMode, user, handleSelectArtistMode, handleSelectGeneralMode, handleSelectRestaurantMode, handleSelectFounderMode, handleSelectCompanyMode]);
 
   const displayName = user?.displayName || user?.email || 'Profile';
   const displayEmail = user?.email || '';
@@ -532,6 +570,7 @@ export default function Profile() {
         handleSelectGeneralMode={handleSelectGeneralMode}
         handleSelectRestaurantMode={handleSelectRestaurantMode}
         handleSelectFounderMode={handleSelectFounderMode}
+        handleSelectCompanyMode={handleSelectCompanyMode}
       />
     );
   }
@@ -557,7 +596,10 @@ export default function Profile() {
       return <ProfileRestaurantController {...controllerProps} />;
     }
     if (profileMode === 'founder') {
-      return <ProfileFounderController {...controllerProps} />;
+      return <ProfileFounderController {...controllerProps} profileType="founder" />;
+    }
+    if (profileMode === 'company') {
+      return <ProfileFounderController {...controllerProps} profileType="company" />;
     }
   }
 
