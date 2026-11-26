@@ -457,6 +457,97 @@
   text-align: left;
 }
 
+/* ── Trusted By square tiles (6 fit; loop-scroll when more) ── */
+.artist-public-wrapper .trusted-by-track-wrap {
+  width: 100%;
+  overflow: hidden;
+  margin: 0 -4px;
+  padding: 4px 0 2px;
+}
+.artist-public-wrapper .trusted-by-track {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.artist-public-wrapper .trusted-by-loop .trusted-by-track {
+  width: max-content;
+}
+.artist-public-wrapper .trusted-by-track:not(.trusted-by-track-animate) {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.artist-public-wrapper .trusted-by-track:not(.trusted-by-track-animate) .trusted-by-tile {
+  flex: 0 0 calc((100% - 50px) / 6);
+  max-width: calc((100% - 50px) / 6);
+}
+.artist-public-wrapper .trusted-by-track-animate {
+  animation: trustedByMarquee 28s linear infinite;
+}
+.artist-public-wrapper .trusted-by-loop:hover .trusted-by-track-animate {
+  animation-play-state: paused;
+}
+@keyframes trustedByMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.artist-public-wrapper .trusted-by-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  flex: 0 0 56px;
+  width: 56px;
+  min-width: 56px;
+  cursor: pointer;
+}
+.artist-public-wrapper .trusted-by-track:not(.trusted-by-track-animate) .trusted-by-tile {
+  width: auto;
+  min-width: 0;
+}
+.artist-public-wrapper .trusted-by-tile-square {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(10, 10, 10, 0.06);
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.artist-public-wrapper .trusted-by-tile:hover .trusted-by-tile-square {
+  transform: translateY(-2px);
+  border-color: rgba(200, 0, 26, 0.35);
+}
+.artist-public-wrapper .trusted-by-tile-square img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.artist-public-wrapper .trusted-by-tile-initial {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--muted, #9A9490);
+}
+.artist-public-wrapper .trusted-by-tile-name {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--ink, #0A0A0A);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
 /* ── Alternating section bands (cream ↔ black) ── */
 .artist-public-wrapper .section-band-cream {
   background: var(--cream);

@@ -11,7 +11,7 @@ import './GeneralProfileView.css';
 import { useShowcaseEmbedHeight } from '../hooks/useShowcaseEmbedHeight';
 import useLiveTeamMembers from '../hooks/useLiveTeamMembers';
 import { sanitizeBioHtml, isRichBioHtml, bioToPlainText } from '../utils/sanitizeBioHtml';
-import { extractNanoUsername, resolveNanoProfile } from '../utils/resolveNanoProfile';
+import { extractNanoUsername, resolveNanoProfile, nanoProfilePath } from '../utils/resolveNanoProfile';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -1853,110 +1853,73 @@ function GeneralProfileView() {
         )}
         {showAboutEffectively && (cleanBioPlain || isPreview) && <div className="divider"></div>}
 
-        {/* COMPANY: Trusted By (linked client company profiles) */}
+        {/* COMPANY: Trusted By — square tiles (6 fit), loop-scroll when more */}
         {isCompany && profile.showMilestones !== false && (
           ((profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) || isPreview)
         ) && (
           <>
-            <section className="section founder-milestones-section section-band-cream" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+            <section className="section founder-milestones-section section-band-cream" style={{ paddingTop: '36px', paddingBottom: '20px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
                 <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRUSTED BY</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {(profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) ? (
-                  (trustedByList.length ? trustedByList : profile.milestones)
-                    .filter((m) => extractNanoUsername(m?.nanoUsername || m?.username || ''))
-                    .map((m, idx) => {
-                      const uname = extractNanoUsername(m.nanoUsername || m.username || '');
-                      const displayName = (m.name || m.label || `@${uname}`).replace(/\|/g, ' ').trim();
-                      const companyUrl = `/company/${uname}`;
-                      const handleClick = (e) => {
-                        if (isPreview) {
-                          e.preventDefault();
-                          window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'milestones' }, '*');
-                          return;
-                        }
-                        if (window.self !== window.top) {
-                          e.preventDefault();
-                          window.open(companyUrl, '_blank', 'noopener,noreferrer');
-                        }
-                      };
-                      return (
-                        <a
-                          key={`${uname}-${idx}`}
-                          href={isPreview ? undefined : companyUrl}
-                          onClick={handleClick}
-                          target={isPreview ? undefined : '_blank'}
-                          rel={isPreview ? undefined : 'noopener noreferrer'}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '14px 16px',
-                            borderRadius: '14px',
-                            background: 'rgba(10,10,10,0.04)',
-                            border: '1px solid rgba(10,10,10,0.08)',
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                            <div style={{
-                              width: '44px',
-                              height: '44px',
-                              borderRadius: '10px',
-                              overflow: 'hidden',
-                              background: 'rgba(10,10,10,0.06)',
-                              flexShrink: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              {m.photo ? (
-                                <img src={fixImageUrl(m.photo) || m.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <span style={{ fontWeight: 800, color: 'var(--muted)', fontSize: '1rem' }}>
-                                  {displayName.charAt(0).toUpperCase()}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.03em', lineHeight: 1.3 }}>
-                                {displayName}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>
-                                @{uname}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: 'rgba(200,0,26,0.06)',
-                            color: 'var(--red)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="5" y1="12" x2="19" y2="12"></line>
-                              <polyline points="12 5 19 12 12 19"></polyline>
-                            </svg>
-                          </div>
-                        </a>
-                      );
-                    })
-                ) : (
-                  <div style={{ padding: '8px 16px', borderRadius: '6px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
-                    + Click to add client company profiles
+              {(() => {
+                const items = (trustedByList.length ? trustedByList : (profile.milestones || []))
+                  .filter((m) => extractNanoUsername(m?.nanoUsername || m?.username || ''));
+                if (!items.length) {
+                  return (
+                    <div style={{ padding: '8px 16px', borderRadius: '6px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
+                      + Click to add company or people profiles
+                    </div>
+                  );
+                }
+                const loop = items.length > 6;
+                const renderTile = (m, idx, keyPrefix) => {
+                  const uname = extractNanoUsername(m.nanoUsername || m.username || '');
+                  const displayName = (m.name || m.label || `@${uname}`).replace(/\|/g, ' ').trim();
+                  const href = nanoProfilePath(uname, m.profileType || (m.artistId ? 'artist' : 'general'));
+                  const handleClick = (e) => {
+                    if (isPreview) {
+                      e.preventDefault();
+                      window.parent.postMessage({ type: 'PREVIEW_CLICK', field: 'milestones' }, '*');
+                      return;
+                    }
+                    if (window.self !== window.top) {
+                      e.preventDefault();
+                      window.open(href, '_blank', 'noopener,noreferrer');
+                    }
+                  };
+                  return (
+                    <a
+                      key={`${keyPrefix}-${uname}-${idx}`}
+                      className="trusted-by-tile"
+                      href={isPreview ? undefined : href}
+                      onClick={handleClick}
+                      target={isPreview ? undefined : '_blank'}
+                      rel={isPreview ? undefined : 'noopener noreferrer'}
+                      title={displayName}
+                    >
+                      <div className="trusted-by-tile-square">
+                        {m.photo ? (
+                          <img src={fixImageUrl(m.photo) || m.photo} alt={displayName} />
+                        ) : (
+                          <span className="trusted-by-tile-initial">
+                            {displayName.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="trusted-by-tile-name">{displayName}</div>
+                    </a>
+                  );
+                };
+                return (
+                  <div className={`trusted-by-track-wrap ${loop ? 'trusted-by-loop' : ''}`}>
+                    <div className={`trusted-by-track ${loop ? 'trusted-by-track-animate' : ''}`}>
+                      {items.map((m, idx) => renderTile(m, idx, 'a'))}
+                      {loop ? items.map((m, idx) => renderTile(m, idx, 'b')) : null}
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </section>
             <div className="divider"></div>
           </>

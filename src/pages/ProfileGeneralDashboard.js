@@ -1622,7 +1622,7 @@ export default function ProfileGeneralDashboard(props) {
       const handleAddTrustedCompany = async () => {
         const clean = extractNanoUsername(trustedCompanyInput);
         if (!clean) {
-          setTrustedCompanyMsg('Enter a company Nano username that already exists.');
+          setTrustedCompanyMsg('Enter a Nano username that already exists.');
           return;
         }
         const already = milestones.some((m) =>
@@ -1635,27 +1635,24 @@ export default function ProfileGeneralDashboard(props) {
         setIsAddingTrustedCompany(true);
         setTrustedCompanyMsg(`Looking up @${clean}...`);
         try {
-          // Strict DB lookup only — must exist as company in general-profile API
-          const res = await generalProfileAPI.getByUsername(clean);
-          const data = res?.success === false ? null : res?.data;
-          if (!data || !data.username) {
-            setTrustedCompanyMsg(`@${clean} is not in the database. Only existing company profiles can be added.`);
+          // Any existing Nano profile (company, founder, general, artist)
+          const live = await resolveNanoProfile(clean);
+          if (!live || !live.username) {
+            setTrustedCompanyMsg(`@${clean} is not in the database. Only existing Nano profiles can be added.`);
             return;
           }
-          if (String(data.profileType || '').toLowerCase() !== 'company') {
-            setTrustedCompanyMsg(`@${clean} exists but is not a company profile. Enter a company username.`);
-            return;
-          }
-          const name = (data.companyName || data.name || '').replace(/\|/g, ' ').trim() || `@${clean}`;
-          const photo = data.photo || data.companyImage || '';
-          const uname = String(data.username || clean).toLowerCase().trim();
+          const uname = String(live.username || clean).toLowerCase().trim();
+          const name = (live.companyName || live.name || '').replace(/\|/g, ' ').trim() || `@${uname}`;
+          const photo = live.photo || live.companyImage || '';
+          const pType = live.profileType || 'general';
           const updated = [...milestones, {
             label: name,
             name,
             photo,
             username: uname,
             nanoUsername: uname,
-            profileType: 'company'
+            profileType: pType,
+            artistId: pType === 'artist' ? uname : ''
           }];
           setHeroUpdates(prev => ({ ...prev, milestones: updated, showMilestones: true }));
           setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: updated, showMilestones: true } : a));
@@ -1664,7 +1661,7 @@ export default function ProfileGeneralDashboard(props) {
           const ok = await handleUpdateHeroField('milestones', updated, { showMilestones: true });
           setTrustedCompanyMsg(ok ? '' : 'Added locally but save failed. Click Save Trusted By to retry.');
         } catch (_) {
-          setTrustedCompanyMsg(`@${clean} is not in the database. Only existing company profiles can be added.`);
+          setTrustedCompanyMsg(`@${clean} is not in the database. Only existing Nano profiles can be added.`);
         } finally {
           setIsAddingTrustedCompany(false);
         }
@@ -1675,9 +1672,9 @@ export default function ProfileGeneralDashboard(props) {
           {renderEditorHeader('Trusted By', 'showMilestones')}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Add client company</h5>
+              <h5 style={{ margin: '0 0 0.4rem 0', color: '#0f172a', fontSize: '0.92rem', fontWeight: 700 }}>Add company or person</h5>
               <p style={{ margin: '0 0 0.85rem 0', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.4 }}>
-                Enter an existing Nano company username. Only profiles already in the database can be added — their name and logo will show in Trusted By.
+                Enter any existing Nano username (company or person). Their photo shows as a square tile; tap opens their profile.
               </p>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', width: '100%' }}>
                 <div style={{ display: 'flex', flex: 1, minWidth: 0, height: '44px', alignItems: 'center' }}>
@@ -1701,7 +1698,7 @@ export default function ProfileGeneralDashboard(props) {
                     value={trustedCompanyInput}
                     onChange={(e) => setTrustedCompanyInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTrustedCompany(); } }}
-                    placeholder="client_company_username"
+                    placeholder="nano_username"
                     disabled={isAddingTrustedCompany}
                     style={{
                       flex: 1,
@@ -1740,7 +1737,7 @@ export default function ProfileGeneralDashboard(props) {
                 <p style={{
                   margin: '0.65rem 0 0',
                   fontSize: '0.8rem',
-                  color: /not in the database|not a company|already|enter a company|exists but/i.test(trustedCompanyMsg) ? '#dc2626' : '#2563eb'
+                  color: /not in the database|already|enter a|exists but/i.test(trustedCompanyMsg) ? '#dc2626' : '#2563eb'
                 }}>
                   {trustedCompanyMsg}
                 </p>
@@ -1753,13 +1750,14 @@ export default function ProfileGeneralDashboard(props) {
               </label>
               {milestones.length === 0 ? (
                 <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
-                  No client companies added yet. Link company profiles above.
+                  No profiles added yet. Add company or people usernames above.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {milestones.map((m, idx) => {
                     const uname = extractNanoUsername(m.nanoUsername || m.username || '');
-                    const displayName = (m.name || m.label || (uname ? `@${uname}` : 'Company')).replace(/\|/g, ' ').trim();
+                    const displayName = (m.name || m.label || (uname ? `@${uname}` : 'Profile')).replace(/\|/g, ' ').trim();
+                    const typeLabel = m.profileType || (m.artistId ? 'artist' : '');
                     return (
                       <div key={`${uname || 't'}-${idx}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -1784,9 +1782,11 @@ export default function ProfileGeneralDashboard(props) {
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>{displayName}</div>
                             {uname ? (
-                              <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600 }}>@{uname}</div>
+                              <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600 }}>
+                                @{uname}{typeLabel ? ` · ${typeLabel}` : ''}
+                              </div>
                             ) : (
-                              <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Legacy text — remove and re-add as a company profile</div>
+                              <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Legacy text — remove and re-add with a Nano username</div>
                             )}
                           </div>
                         </div>
@@ -1814,13 +1814,15 @@ export default function ProfileGeneralDashboard(props) {
                   const toSave = milestones.map((m) => {
                     const uname = extractNanoUsername(m.nanoUsername || m.username || '');
                     if (uname) {
+                      const pType = m.profileType || 'general';
                       return {
                         label: m.name || m.label || `@${uname}`,
                         name: m.name || m.label || `@${uname}`,
                         photo: m.photo || '',
                         username: uname,
                         nanoUsername: uname,
-                        profileType: 'company'
+                        profileType: pType,
+                        artistId: pType === 'artist' ? uname : ''
                       };
                     }
                     return { label: m.label || m.name || '' };
@@ -2295,7 +2297,7 @@ export default function ProfileGeneralDashboard(props) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
             {renderQuickAccessButton('company', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>, isCompany ? "Company & Venture" : "Link Company", "showCompany", isCompany ? "Startup name, website, and founding year" : "Link your Nano company profile by username")}
             
-            {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, isCompany ? "Trusted By" : "Traction & Milestones", "showMilestones", isCompany ? "Link client company Nano profiles you have served" : "Key achievements, funds raised, and user growth badges")}
+            {renderQuickAccessButton('milestones', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>, isCompany ? "Trusted By" : "Traction & Milestones", "showMilestones", isCompany ? "Add company or people Nano profiles as square tiles" : "Key achievements, funds raised, and user growth badges")}
             
             {renderQuickAccessButton('team', <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, isCompany ? "Team" : "Leadership & Team", "showCoFounders", isCompany ? "Add team member Nano profiles" : "Co-founders and team member Nano profiles")}
           </div>

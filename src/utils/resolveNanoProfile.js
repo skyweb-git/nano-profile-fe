@@ -9,6 +9,18 @@ export function extractNanoUsername(raw) {
   return value.toLowerCase();
 }
 
+/** Public path for a Nano profile by type. */
+export function nanoProfilePath(usernameOrUrl, profileType) {
+  const username = extractNanoUsername(usernameOrUrl);
+  if (!username) return '';
+  const t = String(profileType || '').toLowerCase();
+  if (t === 'company') return `/company/${username}`;
+  if (t === 'founder') return `/founder/${username}`;
+  if (t === 'artist') return `/artist/${username}`;
+  if (t === 'restaurant') return `/restaurant/${username}`;
+  return `/link/${username}`;
+}
+
 function mapGeneralData(d, fallbackUsername) {
   const type = d.profileType || 'general';
   const username = (d.username || fallbackUsername).toLowerCase();
