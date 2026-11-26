@@ -302,54 +302,63 @@ export default function ProfileGeneralDashboard(props) {
     prevArtistRef.current = { ...artist };
   }, [artist]);
 
+  const buildDraftPayload = () => {
+    if (!artist) return null;
+    return JSON.parse(JSON.stringify({
+      ...artist,
+      profileType: isCompany ? 'company' : (isFounder ? 'founder' : (artist?.profileType || 'general')),
+      linkedCompanyUsername: heroUpdates.linkedCompanyUsername !== undefined
+        ? heroUpdates.linkedCompanyUsername
+        : (artist?.linkedCompanyUsername || ''),
+      companyName: heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || ''),
+      companyWebsite: heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || ''),
+      foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
+      companyDescription: heroUpdates.companyDescription !== undefined ? heroUpdates.companyDescription : (artist?.companyDescription || ''),
+      companyImage: heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || ''),
+      photoAspect: (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
+        ? 'landscape'
+        : 'portrait',
+      companyImageAspect: (heroUpdates.companyImageAspect !== undefined ? heroUpdates.companyImageAspect : artist?.companyImageAspect) === 'portrait'
+        ? 'portrait'
+        : 'landscape',
+      fundingStage: '',
+      teamSize: '',
+      pitchDeckPdf: '',
+      ctaLabel: '',
+      ctaUrl: '',
+      milestones: heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []),
+      coFounders: heroUpdates.coFounders !== undefined ? heroUpdates.coFounders : (artist?.coFounders || []),
+      showCompany: heroUpdates.showCompany !== undefined ? heroUpdates.showCompany : (artist?.showCompany !== false),
+      showPitchDeck: false,
+      showCoFounders: heroUpdates.showCoFounders !== undefined ? heroUpdates.showCoFounders : (artist?.showCoFounders !== false),
+      showMilestones: heroUpdates.showMilestones !== undefined ? heroUpdates.showMilestones : (artist?.showMilestones !== false),
+      showCta: false,
+      name: heroUpdates.name !== undefined ? heroUpdates.name : (artist?.name || ''),
+      city: heroUpdates.city !== undefined ? heroUpdates.city : (artist?.city || ''),
+      state: heroUpdates.state !== undefined ? heroUpdates.state : (artist?.state || ''),
+      title: heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.title || ''),
+      experience: heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || ''),
+      bio: heroUpdates.bio !== undefined ? heroUpdates.bio : (artist?.bio || '')
+    }));
+  };
+
+  const pushDraftToPreview = () => {
+    if (!iframeRef.current?.contentWindow) return;
+    try {
+      const cleanData = buildDraftPayload();
+      if (!cleanData) return;
+      iframeRef.current.contentWindow.postMessage({
+        type: 'DRAFT_UPDATE',
+        data: cleanData
+      }, '*');
+    } catch (err) {
+      console.warn('Artist draft sync serialization warning:', err);
+    }
+  };
+
   // Real-time synchronization of editor draft updates with the preview iframe
   useEffect(() => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      try {
-        const cleanData = JSON.parse(JSON.stringify({
-          ...artist,
-          profileType: isCompany ? 'company' : (isFounder ? 'founder' : (artist?.profileType || 'general')),
-          linkedCompanyUsername: heroUpdates.linkedCompanyUsername !== undefined
-            ? heroUpdates.linkedCompanyUsername
-            : (artist?.linkedCompanyUsername || ''),
-          companyName: heroUpdates.companyName !== undefined ? heroUpdates.companyName : (artist?.companyName || ''),
-          companyWebsite: heroUpdates.companyWebsite !== undefined ? heroUpdates.companyWebsite : (artist?.companyWebsite || ''),
-          foundingYear: heroUpdates.foundingYear !== undefined ? heroUpdates.foundingYear : (artist?.foundingYear || ''),
-          companyDescription: heroUpdates.companyDescription !== undefined ? heroUpdates.companyDescription : (artist?.companyDescription || ''),
-          companyImage: heroUpdates.companyImage !== undefined ? heroUpdates.companyImage : (artist?.companyImage || ''),
-          photoAspect: (heroUpdates.photoAspect !== undefined ? heroUpdates.photoAspect : artist?.photoAspect) === 'landscape'
-            ? 'landscape'
-            : 'portrait',
-          companyImageAspect: (heroUpdates.companyImageAspect !== undefined ? heroUpdates.companyImageAspect : artist?.companyImageAspect) === 'portrait'
-            ? 'portrait'
-            : 'landscape',
-          fundingStage: '',
-          teamSize: '',
-          pitchDeckPdf: '',
-          ctaLabel: '',
-          ctaUrl: '',
-          milestones: heroUpdates.milestones !== undefined ? heroUpdates.milestones : (artist?.milestones || []),
-          coFounders: heroUpdates.coFounders !== undefined ? heroUpdates.coFounders : (artist?.coFounders || []),
-          showCompany: heroUpdates.showCompany !== undefined ? heroUpdates.showCompany : (artist?.showCompany !== false),
-          showPitchDeck: false,
-          showCoFounders: heroUpdates.showCoFounders !== undefined ? heroUpdates.showCoFounders : (artist?.showCoFounders !== false),
-          showMilestones: heroUpdates.showMilestones !== undefined ? heroUpdates.showMilestones : (artist?.showMilestones !== false),
-          showCta: false,
-          name: heroUpdates.name !== undefined ? heroUpdates.name : (artist?.name || ''),
-          city: heroUpdates.city !== undefined ? heroUpdates.city : (artist?.city || ''),
-          state: heroUpdates.state !== undefined ? heroUpdates.state : (artist?.state || ''),
-          title: heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.title || ''),
-          experience: heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || ''),
-          bio: heroUpdates.bio !== undefined ? heroUpdates.bio : (artist?.bio || '')
-        }));
-        iframeRef.current.contentWindow.postMessage({
-          type: 'DRAFT_UPDATE',
-          data: cleanData
-        }, '*');
-      } catch (err) {
-        console.warn('Artist draft sync serialization warning:', err);
-      }
-    }
+    pushDraftToPreview();
   }, [heroUpdates, artist, previewKey, isFounder, isCompany]);
 
   // Helper editor header with integrated toggle switch
@@ -507,15 +516,18 @@ export default function ProfileGeneralDashboard(props) {
       }
       if (event.data && event.data.type === 'PROFILE_READY') {
         setIframeVisible(true);
+        // Re-push draft after iframe fetch so Trusted By / Team / Contacts match the editor
+        window.setTimeout(() => pushDraftToPreview(), 50);
+        window.setTimeout(() => pushDraftToPreview(), 300);
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [setActiveEditor]);
+  }, [setActiveEditor, artist, heroUpdates, isCompany, isFounder]);
 
-  // Obsolete direct DOM attachment is replaced by postMessage listener inside the iframe itself
+  // After iframe document loads, push current Trusted By / Team draft (API may still be fetching)
   const handleIframeLoad = () => {
-    // Left empty since iframe manages its own hover styling and click listeners internally.
+    window.setTimeout(() => pushDraftToPreview(), 100);
   };
 
   // Helper renderers for context-aware editors on the right side
@@ -1623,9 +1635,6 @@ export default function ProfileGeneralDashboard(props) {
       const trustedItems = milestones.filter((m) =>
         extractNanoUsername(m.nanoUsername || m.username || '')
       );
-      const legacyTextItems = milestones.filter((m) =>
-        !extractNanoUsername(m.nanoUsername || m.username || '')
-      );
 
       const handleAddTrustedCompany = async () => {
         const clean = extractNanoUsername(trustedCompanyInput);
@@ -1673,12 +1682,6 @@ export default function ProfileGeneralDashboard(props) {
         } finally {
           setIsAddingTrustedCompany(false);
         }
-      };
-
-      const clearLegacyTextItems = async () => {
-        setHeroUpdates(prev => ({ ...prev, milestones: trustedItems }));
-        setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: trustedItems } : a));
-        await handleUpdateHeroField('milestones', trustedItems, { showMilestones: true });
       };
 
       return (
@@ -1762,40 +1765,6 @@ export default function ProfileGeneralDashboard(props) {
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
                 Trusted By ({trustedItems.length})
               </label>
-              {legacyTextItems.length > 0 && (
-                <div style={{
-                  marginBottom: '0.75rem',
-                  padding: '0.75rem 1rem',
-                  background: '#fff7ed',
-                  border: '1px solid #fed7aa',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem'
-                }}>
-                  <span style={{ fontSize: '0.8rem', color: '#9a3412', lineHeight: 1.35 }}>
-                    Old text badges (Products Shipped, etc.) are hidden from the profile. Clear them to finish cleanup.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={clearLegacyTextItems}
-                    style={{
-                      flexShrink: 0,
-                      border: 'none',
-                      background: '#ea580c',
-                      color: '#fff',
-                      borderRadius: '6px',
-                      padding: '0.4rem 0.7rem',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Clear old text
-                  </button>
-                </div>
-              )}
               {trustedItems.length === 0 ? (
                 <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
                   No profiles added yet. Add company or people usernames above.

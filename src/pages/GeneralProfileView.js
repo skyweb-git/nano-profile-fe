@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { generalProfileAPI } from '../services/api';
 import { fixImageUrl } from '../utils/imageHelper';
@@ -88,9 +88,18 @@ function displayGeneralLinkLabel(linkOrUrl) {
 function GeneralProfileView() {
   const { username } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const isMock = searchParams.get('mock') === '1';
   const isEmbed = searchParams.get('embed') === '1';
+  // Route path is source of truth for layout (Visit Profile has no ?profileType=)
+  const pathProfileType = location.pathname.startsWith('/company/')
+    ? 'company'
+    : location.pathname.startsWith('/founder/')
+      ? 'founder'
+      : location.pathname.startsWith('/restaurant/')
+        ? 'restaurant'
+        : null;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,16 +115,19 @@ function GeneralProfileView() {
   const [showCompanyView, setShowCompanyView] = useState(false);
   const [linkedCompanyLive, setLinkedCompanyLive] = useState(null);
   const liveTeamMembers = useLiveTeamMembers(profile?.coFounders || []);
-  const trustedByList = useLiveTeamMembers(
-    (profile?.profileType === 'company' ? (profile?.milestones || []) : []).map((m) => ({
-      ...m,
-      nanoUsername: m.nanoUsername || m.username || '',
-      username: m.username || m.nanoUsername || '',
-      name: m.name || m.label || '',
-      photo: m.photo || '',
-      profileType: m.profileType || 'company'
-    }))
-  );
+  const trustedBySource = (
+    (profile?.profileType === 'company' || searchParams.get('profileType') === 'company' || searchParams.get('type') === 'company')
+      ? (profile?.milestones || [])
+      : []
+  ).map((m) => ({
+    ...m,
+    nanoUsername: m.nanoUsername || m.username || '',
+    username: m.username || m.nanoUsername || '',
+    name: m.name || m.label || '',
+    photo: m.photo || '',
+    profileType: m.profileType || (m.artistId ? 'artist' : 'general')
+  }));
+  const trustedByList = useLiveTeamMembers(trustedBySource);
 
   useShowcaseEmbedHeight(isEmbed);
 
@@ -434,7 +446,11 @@ function GeneralProfileView() {
       try {
         const res = await generalProfileAPI.getByUsername(username);
         if (res.success && res.data) {
-          setProfile(res.data);
+          setProfile({
+            ...res.data,
+            // Keep /company and /founder layouts even if DB profileType is stale
+            profileType: pathProfileType || res.data.profileType || 'general'
+          });
         } else {
           setError('Profile not found');
         }
@@ -445,7 +461,7 @@ function GeneralProfileView() {
       }
     };
     if (username) fetchProfile();
-  }, [username, isMock]);
+  }, [username, isMock, pathProfileType]);
 
   const handleOpenCompanyView = async () => {
     // Dashboard preview iframe: open Company & Venture / Link Company editor
@@ -482,17 +498,23 @@ function GeneralProfileView() {
 
   useEffect(() => {
     const handleFocus = () => {
+      // Dashboard preview gets live drafts via postMessage — don't overwrite with stale API
+      if (window.self !== window.top) return;
       if (username && !isMock) {
         generalProfileAPI.getByUsername(username).then(res => {
           if (res && res.success && res.data) {
-            setProfile(prev => ({ ...prev, ...res.data }));
+            setProfile(prev => ({
+              ...prev,
+              ...res.data,
+              profileType: pathProfileType || res.data.profileType || prev?.profileType
+            }));
           }
         }).catch(() => {});
       }
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [username, isMock]);
+  }, [username, isMock, pathProfileType]);
 
   // Inject helper style tags if loaded inside an iframe (visual editor mode)
   useEffect(() => {
@@ -670,17 +692,26 @@ function GeneralProfileView() {
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'DRAFT_UPDATE') {
         setProfile(prev => {
-          if (!prev) return event.data.data;
-          return {
-            ...prev,
-            ...event.data.data
-          };
+          const incoming = event.data.data || {};
+          const next = !prev ? { ...incoming } : { ...prev, ...incoming };
+          // Prefer draft arrays when present so preview matches dashboard editor
+          if (Array.isArray(incoming.milestones)) next.milestones = incoming.milestones;
+          if (Array.isArray(incoming.coFounders)) next.coFounders = incoming.coFounders;
+          if (Array.isArray(incoming.links)) next.links = incoming.links;
+          if (incoming.showMilestones !== undefined) next.showMilestones = incoming.showMilestones;
+          if (incoming.showCoFounders !== undefined) next.showCoFounders = incoming.showCoFounders;
+          if (incoming.showConnect !== undefined) next.showConnect = incoming.showConnect;
+          if (incoming.showAbout !== undefined) next.showAbout = incoming.showAbout;
+          if (incoming.showCompany !== undefined) next.showCompany = incoming.showCompany;
+          // Never let a draft wipe route-based company/founder layout
+          if (pathProfileType) next.profileType = pathProfileType;
+          return next;
         });
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [pathProfileType]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => alert('Link copied!'));
@@ -707,12 +738,14 @@ function GeneralProfileView() {
     window.setTimeout(() => setPageTurnDir(''), 220);
   };
 
-  // Tell the parent dashboard when the profile is fully loaded and ready to show
+  // Tell the parent dashboard once when the profile first finishes loading
   useEffect(() => {
     if (!loading && profile) {
       try { window.parent.postMessage({ type: 'PROFILE_READY' }, '*'); } catch (e) {}
     }
-  }, [loading, profile]);
+    // Intentionally only on loading flip — draft updates must not re-fire PROFILE_READY
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   if (loading) {
     return null;
@@ -729,11 +762,17 @@ function GeneralProfileView() {
   }
 
 
-  const isRestaurant = profile?.profileType === 'restaurant';
-  const isCompany = profile?.profileType === 'company' ||
+  const isRestaurant = pathProfileType === 'restaurant' ||
+                    profile?.profileType === 'restaurant' ||
+                    searchParams.get('profileType') === 'restaurant' ||
+                    searchParams.get('type') === 'restaurant';
+  const isCompany = pathProfileType === 'company' ||
+                    profile?.profileType === 'company' ||
                     searchParams.get('profileType') === 'company' ||
                     searchParams.get('type') === 'company';
-  const isFounder = (!isRestaurant && (isCompany || profile?.profileType === 'founder' ||
+  const isFounder = (!isRestaurant && (isCompany ||
+                    pathProfileType === 'founder' ||
+                    profile?.profileType === 'founder' ||
                     searchParams.get('profileType') === 'founder' ||
                     searchParams.get('type') === 'founder' ||
                     Boolean(profile?.companyName || (profile?.milestones && profile.milestones.length > 0) || (profile?.coFounders && profile.coFounders.length > 0) || profile?.pitchDeckPdf)));
@@ -1853,7 +1892,7 @@ function GeneralProfileView() {
         )}
         {showAboutEffectively && (cleanBioPlain || isPreview) && <div className="divider"></div>}
 
-        {/* COMPANY: Trusted By — square tiles (6 fit), loop-scroll when more */}
+        {/* COMPANY: Trusted By — square tiles (4 fit), loop-scroll when more */}
         {isCompany && profile.showMilestones !== false && (
           ((profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) || isPreview)
         ) && (
@@ -1863,8 +1902,29 @@ function GeneralProfileView() {
                 <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRUSTED BY</div>
               </div>
               {(() => {
-                const items = (trustedByList.length ? trustedByList : (profile.milestones || []))
-                  .filter((m) => extractNanoUsername(m?.nanoUsername || m?.username || ''));
+                // Prefer profile milestones (draft/API), enrich with live name/photo when available
+                const raw = Array.isArray(profile.milestones) ? profile.milestones : [];
+                const liveByUser = new Map(
+                  (trustedByList || []).map((m) => [
+                    extractNanoUsername(m?.nanoUsername || m?.username || ''),
+                    m
+                  ])
+                );
+                const items = raw
+                  .map((m) => {
+                    const uname = extractNanoUsername(m?.nanoUsername || m?.username || '');
+                    if (!uname) return null;
+                    const live = liveByUser.get(uname);
+                    return {
+                      ...m,
+                      nanoUsername: uname,
+                      username: uname,
+                      name: live?.name || m.name || m.label || `@${uname}`,
+                      photo: live?.photo || m.photo || '',
+                      profileType: live?.profileType || m.profileType || 'general'
+                    };
+                  })
+                  .filter(Boolean);
                 if (!items.length) {
                   return (
                     <div style={{ padding: '8px 16px', borderRadius: '6px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>
@@ -1872,7 +1932,7 @@ function GeneralProfileView() {
                     </div>
                   );
                 }
-                const loop = items.length > 6;
+                const loop = items.length > 4;
                 const renderTile = (m, idx, keyPrefix) => {
                   const uname = extractNanoUsername(m.nanoUsername || m.username || '');
                   const displayName = (m.name || m.label || `@${uname}`).replace(/\|/g, ' ').trim();
@@ -1969,7 +2029,7 @@ function GeneralProfileView() {
         )}
 
         {/* TEAM (company) / LEADERSHIP & TEAM (founder) — after Trusted By / Milestones */}
-        {isFounder && profile.showCoFounders !== false && (((profile.coFounders || []).length > 0) || isPreview) && (
+        {(isCompany || isFounder) && profile.showCoFounders !== false && (((profile.coFounders || []).length > 0) || isPreview) && (
           <>
             <section className="section founder-team-section section-band-ink" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
@@ -1992,13 +2052,18 @@ function GeneralProfileView() {
                     if (!nanoUser && (cf.name || '').toLowerCase().includes('vamshi')) {
                       nanoUser = 'capvamshi';
                     }
-                    const isArtistMember = cf.profileType === 'artist' || Boolean(cf.artistId);
                     const nanoUrl = nanoUser
-                      ? (isArtistMember ? `/artist/${nanoUser}` : `/link/${nanoUser}`)
+                      ? nanoProfilePath(nanoUser, cf.profileType || (cf.artistId ? 'artist' : 'general'))
                       : null;
 
-                    const displayName = (cf.name || '').replace(/\|/g, ' ').trim() || (nanoUser ? `@${nanoUser}` : 'Team Member');
-                    const displayRole = (cf.role || 'Co-Founder').replace(/\|/g, ' ').trim();
+                    const displayName = (cf.name || '')
+                      .split('|')
+                      .map((p) => p.trim())
+                      .filter(Boolean)
+                      .join(' ')
+                      .replace(/\s+/g, ' ')
+                      .trim() || (nanoUser ? `@${nanoUser}` : 'Team Member');
+                    const displayRole = (cf.role || 'Team Member').replace(/\|/g, ' ').trim();
                     const displayPhoto = cf.photo || '';
 
                     const handleCardClick = (e) => {

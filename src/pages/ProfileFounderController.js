@@ -243,13 +243,13 @@ export default function ProfileFounderController(props) {
 
           if (Object.keys(migratePayload).length > 1) {
             try {
-              const fixRes = await generalProfileAPI.update(
+              await generalProfileAPI.update(
                 migratePayload,
                 () => getIdToken(),
                 getFirebaseUser
               );
-              const fixed = fixRes.data || fixRes;
-              setMyArtists([mapFounderProfileToArtistFormat({ ...nextData, ...fixed }, profileType)]);
+              // Keep nextData (has cleaned username tiles) — don't let a stale API shape wipe them
+              setMyArtists([mapFounderProfileToArtistFormat(nextData, profileType)]);
             } catch (_) {
               setMyArtists([mapFounderProfileToArtistFormat(nextData, profileType)]);
             }
@@ -497,6 +497,16 @@ export default function ProfileFounderController(props) {
     setSavingLink(field);
     try {
       const payload = { profileType, [field]: value, ...extraPayload };
+      // Always send visibility flags with array saves so public profile shows the same sections
+      if (field === 'milestones' && payload.showMilestones === undefined) {
+        payload.showMilestones = true;
+      }
+      if (field === 'coFounders' && payload.showCoFounders === undefined) {
+        payload.showCoFounders = true;
+      }
+      if (field === 'links' && payload.showConnect === undefined) {
+        payload.showConnect = true;
+      }
       // About headline is stored as `title` in the API (white|red pipe format).
       // Dashboard editors use `experience` locally — map it so the red line persists.
       if (field === 'experience') {
@@ -554,8 +564,19 @@ export default function ProfileFounderController(props) {
         return mapped;
       }));
       setArtistChanged(true);
-      // Layout-only updates should live-sync via DRAFT_UPDATE (no iframe remount flicker)
-      if (field !== 'photoAspect' && field !== 'companyImageAspect') {
+      // Live-sync via DRAFT_UPDATE — avoid remount for fields the draft already carries
+      // (remount + API refetch was wiping Trusted By / Team tiles from the preview)
+      const skipRemount = [
+        'photoAspect',
+        'companyImageAspect',
+        'milestones',
+        'coFounders',
+        'showMilestones',
+        'showCoFounders'
+      ].includes(field)
+        || extraPayload.milestones !== undefined
+        || extraPayload.coFounders !== undefined;
+      if (!skipRemount) {
         setPreviewKey(k => k + 1);
       }
       return true;

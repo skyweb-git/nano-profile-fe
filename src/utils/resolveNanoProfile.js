@@ -21,18 +21,43 @@ export function nanoProfilePath(usernameOrUrl, profileType) {
   return `/link/${username}`;
 }
 
+/** Profile name is stored as FIRST|LAST — show "First Last" on Team cards. */
+function formatProfileName(name) {
+  return String(name || '')
+    .split('|')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** First specialization badge (e.g. "Co-founder"), not the About tagline. */
+function firstSpecializationTag(specialization) {
+  if (!specialization) return '';
+  return String(specialization)
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)[0] || '';
+}
+
 function mapGeneralData(d, fallbackUsername) {
   const type = d.profileType || 'general';
   const username = (d.username || fallbackUsername).toLowerCase();
-  const displayName = (d.companyName || d.name || '').replace(/\|/g, ' ').trim() || `@${username}`;
+  const personName = formatProfileName(d.name);
+  const companyName = (d.companyName || '').trim();
+  // People: first + last name. Companies: company name.
+  const displayName = type === 'company'
+    ? (companyName || personName || `@${username}`)
+    : (personName || companyName || `@${username}`);
+  const firstTag = firstSpecializationTag(d.specialization);
   return {
     name: displayName,
     role:
-      d.title ||
-      d.experience ||
+      firstTag ||
       (type === 'founder' ? 'Founder' : type === 'company' ? 'Company' : type === 'artist' ? 'Artist' : 'Team Member'),
     photo: d.photo || d.companyImage || '',
-    companyName: (d.companyName || '').trim(),
+    companyName,
     companyImage: d.companyImage || '',
     foundingYear: d.foundingYear || '',
     profileType: type,
@@ -43,9 +68,10 @@ function mapGeneralData(d, fallbackUsername) {
 
 function mapArtistData(a, fallbackUsername) {
   const id = (a.artistId || fallbackUsername).toLowerCase();
+  const firstTag = firstSpecializationTag(a.specialization);
   return {
-    name: (a.name || '').replace(/\|/g, ' ').trim() || `@${id}`,
-    role: a.experience || a.specialization || a.title || 'Artist',
+    name: formatProfileName(a.name) || `@${id}`,
+    role: firstTag || 'Artist',
     photo: a.photo || '',
     profileType: 'artist',
     username: id,

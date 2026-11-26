@@ -457,7 +457,7 @@
   text-align: left;
 }
 
-/* ── Trusted By square tiles (6 fit; loop-scroll when more) ── */
+/* ── Trusted By square tiles (4 fit; loop-scroll when more) ── */
 .artist-public-wrapper .trusted-by-track-wrap {
   width: 100%;
   overflow: hidden;
@@ -477,8 +477,8 @@
   justify-content: flex-start;
 }
 .artist-public-wrapper .trusted-by-track:not(.trusted-by-track-animate) .trusted-by-tile {
-  flex: 0 0 calc((100% - 50px) / 6);
-  max-width: calc((100% - 50px) / 6);
+  flex: 0 0 calc((100% - 30px) / 4);
+  max-width: calc((100% - 30px) / 4);
 }
 .artist-public-wrapper .trusted-by-track-animate {
   animation: trustedByMarquee 28s linear infinite;
