@@ -428,6 +428,13 @@ export default function ProfileFounderController(props) {
     setSavingLink(field);
     try {
       const payload = { profileType, [field]: value, ...extraPayload };
+      // About headline is stored as `title` in the API (white|red pipe format).
+      // Dashboard editors use `experience` locally — map it so the red line persists.
+      if (field === 'experience') {
+        payload.title = value;
+      } else if (payload.experience !== undefined && payload.title === undefined) {
+        payload.title = payload.experience;
+      }
       const res = await generalProfileAPI.update(payload, () => getIdToken(), getFirebaseUser);
       if (res && res.success === false) {
         throw new Error(res.message || 'The server rejected this update.');

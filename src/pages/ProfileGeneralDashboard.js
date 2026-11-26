@@ -838,11 +838,15 @@ export default function ProfileGeneralDashboard(props) {
               rows={2}
               style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit', textTransform: 'uppercase' }}
               value={(() => {
-                const exp = heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || '');
+                const exp = heroUpdates.experience !== undefined
+                  ? heroUpdates.experience
+                  : (artist?.experience || artist?.title || '');
                 return exp.split('|')[0] || '';
               })()}
               onChange={(e) => {
-                const exp = heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || '');
+                const exp = heroUpdates.experience !== undefined
+                  ? heroUpdates.experience
+                  : (artist?.experience || artist?.title || '');
                 const part2 = exp.split('|').slice(1).join('|');
                 setHeroUpdates(prev => ({ ...prev, experience: part2 ? `${e.target.value.toUpperCase()}|${part2}` : e.target.value.toUpperCase() }));
               }}
@@ -855,11 +859,15 @@ export default function ProfileGeneralDashboard(props) {
               type="text"
               style={{ width: '100%', boxSizing: 'border-box', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.95rem', outline: 'none', textTransform: 'uppercase' }}
               value={(() => {
-                const exp = heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || '');
+                const exp = heroUpdates.experience !== undefined
+                  ? heroUpdates.experience
+                  : (artist?.experience || artist?.title || '');
                 return exp.split('|').slice(1).join('|') || '';
               })()}
               onChange={(e) => {
-                const exp = heroUpdates.experience !== undefined ? heroUpdates.experience : (artist?.experience || '');
+                const exp = heroUpdates.experience !== undefined
+                  ? heroUpdates.experience
+                  : (artist?.experience || artist?.title || '');
                 const part1 = exp.split('|')[0] || '';
                 setHeroUpdates(prev => ({ ...prev, experience: `${part1}|${e.target.value.toUpperCase()}` }));
               }}
@@ -880,7 +888,9 @@ export default function ProfileGeneralDashboard(props) {
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
           <button
             onClick={() => {
-              const expVal = heroUpdates.experience !== undefined ? heroUpdates.experience : (artist.experience || '');
+              const expVal = heroUpdates.experience !== undefined
+                ? heroUpdates.experience
+                : (artist.experience || artist.title || '');
               const bioVal = heroUpdates.bio !== undefined ? heroUpdates.bio : (artist.bio || '');
               
               const isHeadlineEmpty = !expVal.split('|').join('').trim();
@@ -895,7 +905,8 @@ export default function ProfileGeneralDashboard(props) {
                 setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, showAbout: true } : a));
               }
 
-              handleUpdateHeroField('experience', expVal, extraUpdates).then(() => {
+              // Persist pipe headline (white|red) as API `title`; keep local experience in sync
+              handleUpdateHeroField('title', expVal, { ...extraUpdates, experience: expVal }).then(() => {
                 setActiveEditor('default');
               });
             }}
