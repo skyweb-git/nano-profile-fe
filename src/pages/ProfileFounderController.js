@@ -221,21 +221,40 @@ export default function ProfileFounderController(props) {
             setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
           }
         } else {
-          // Older company profiles were saved with showCoFounders:false by default — enable Team section
+          let nextData = { ...data };
+          const migratePayload = { profileType };
+
+          // Older company profiles defaulted showCoFounders:false — enable Team
           if (isCompanyProfile && data.showCoFounders === false) {
+            migratePayload.showCoFounders = true;
+            nextData.showCoFounders = true;
+          }
+
+          // Strip legacy traction text chips (no Nano username) from company Trusted By
+          if (isCompanyProfile && Array.isArray(data.milestones) && data.milestones.length > 0) {
+            const cleaned = data.milestones.filter((m) =>
+              String(m?.nanoUsername || m?.username || '').replace(/^@+/, '').trim()
+            );
+            if (cleaned.length !== data.milestones.length) {
+              migratePayload.milestones = cleaned;
+              nextData.milestones = cleaned;
+            }
+          }
+
+          if (Object.keys(migratePayload).length > 1) {
             try {
               const fixRes = await generalProfileAPI.update(
-                { profileType, showCoFounders: true },
+                migratePayload,
                 () => getIdToken(),
                 getFirebaseUser
               );
               const fixed = fixRes.data || fixRes;
-              setMyArtists([mapFounderProfileToArtistFormat({ ...data, ...fixed, showCoFounders: true }, profileType)]);
+              setMyArtists([mapFounderProfileToArtistFormat({ ...nextData, ...fixed }, profileType)]);
             } catch (_) {
-              setMyArtists([mapFounderProfileToArtistFormat({ ...data, showCoFounders: true }, profileType)]);
+              setMyArtists([mapFounderProfileToArtistFormat(nextData, profileType)]);
             }
           } else {
-            setMyArtists([mapFounderProfileToArtistFormat(data, profileType)]);
+            setMyArtists([mapFounderProfileToArtistFormat(nextData, profileType)]);
           }
         }
         updateOnboardingStep(0);

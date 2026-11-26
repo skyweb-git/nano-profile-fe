@@ -1617,15 +1617,23 @@ export default function ProfileGeneralDashboard(props) {
       }
     };
 
-    // Company profiles: Trusted By = linked client company Nano profiles
+    // Company profiles: Trusted By = linked Nano profiles (company or people)
     if (isCompany) {
+      // Hide old traction text chips (Products Shipped, etc.) — only username-linked tiles
+      const trustedItems = milestones.filter((m) =>
+        extractNanoUsername(m.nanoUsername || m.username || '')
+      );
+      const legacyTextItems = milestones.filter((m) =>
+        !extractNanoUsername(m.nanoUsername || m.username || '')
+      );
+
       const handleAddTrustedCompany = async () => {
         const clean = extractNanoUsername(trustedCompanyInput);
         if (!clean) {
           setTrustedCompanyMsg('Enter a Nano username that already exists.');
           return;
         }
-        const already = milestones.some((m) =>
+        const already = trustedItems.some((m) =>
           extractNanoUsername(m.nanoUsername || m.username || '') === clean
         );
         if (already) {
@@ -1645,7 +1653,7 @@ export default function ProfileGeneralDashboard(props) {
           const name = (live.companyName || live.name || '').replace(/\|/g, ' ').trim() || `@${uname}`;
           const photo = live.photo || live.companyImage || '';
           const pType = live.profileType || 'general';
-          const updated = [...milestones, {
+          const updated = [...trustedItems, {
             label: name,
             name,
             photo,
@@ -1665,6 +1673,12 @@ export default function ProfileGeneralDashboard(props) {
         } finally {
           setIsAddingTrustedCompany(false);
         }
+      };
+
+      const clearLegacyTextItems = async () => {
+        setHeroUpdates(prev => ({ ...prev, milestones: trustedItems }));
+        setMyArtists(prev => prev.map((a, idx) => idx === 0 ? { ...a, milestones: trustedItems } : a));
+        await handleUpdateHeroField('milestones', trustedItems, { showMilestones: true });
       };
 
       return (
@@ -1746,18 +1760,56 @@ export default function ProfileGeneralDashboard(props) {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginBottom: '0.5rem' }}>
-                Trusted By ({milestones.length})
+                Trusted By ({trustedItems.length})
               </label>
-              {milestones.length === 0 ? (
+              {legacyTextItems.length > 0 && (
+                <div style={{
+                  marginBottom: '0.75rem',
+                  padding: '0.75rem 1rem',
+                  background: '#fff7ed',
+                  border: '1px solid #fed7aa',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem'
+                }}>
+                  <span style={{ fontSize: '0.8rem', color: '#9a3412', lineHeight: 1.35 }}>
+                    Old text badges (Products Shipped, etc.) are hidden from the profile. Clear them to finish cleanup.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearLegacyTextItems}
+                    style={{
+                      flexShrink: 0,
+                      border: 'none',
+                      background: '#ea580c',
+                      color: '#fff',
+                      borderRadius: '6px',
+                      padding: '0.4rem 0.7rem',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Clear old text
+                  </button>
+                </div>
+              )}
+              {trustedItems.length === 0 ? (
                 <div style={{ padding: '1rem', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.88rem', textAlign: 'center' }}>
                   No profiles added yet. Add company or people usernames above.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {milestones.map((m, idx) => {
+                  {trustedItems.map((m, idx) => {
                     const uname = extractNanoUsername(m.nanoUsername || m.username || '');
                     const displayName = (m.name || m.label || (uname ? `@${uname}` : 'Profile')).replace(/\|/g, ' ').trim();
                     const typeLabel = m.profileType || (m.artistId ? 'artist' : '');
+                    const realIndex = milestones.findIndex((x) =>
+                      extractNanoUsername(x.nanoUsername || x.username || '') === uname
+                      && (x.name || x.label) === (m.name || m.label)
+                    );
                     return (
                       <div key={`${uname || 't'}-${idx}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -1781,18 +1833,14 @@ export default function ProfileGeneralDashboard(props) {
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>{displayName}</div>
-                            {uname ? (
-                              <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600 }}>
-                                @{uname}{typeLabel ? ` · ${typeLabel}` : ''}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Legacy text — remove and re-add with a Nano username</div>
-                            )}
+                            <div style={{ fontSize: '0.76rem', color: '#2563eb', fontWeight: 600 }}>
+                              @{uname}{typeLabel ? ` · ${typeLabel}` : ''}
+                            </div>
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleRemoveMilestone(idx)}
+                          onClick={() => handleRemoveMilestone(realIndex > -1 ? realIndex : idx)}
                           style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', fontSize: '1.1rem', lineHeight: 1 }}
                           title="Remove"
                         >
@@ -1811,21 +1859,18 @@ export default function ProfileGeneralDashboard(props) {
               <button
                 type="button"
                 onClick={async () => {
-                  const toSave = milestones.map((m) => {
+                  const toSave = trustedItems.map((m) => {
                     const uname = extractNanoUsername(m.nanoUsername || m.username || '');
-                    if (uname) {
-                      const pType = m.profileType || 'general';
-                      return {
-                        label: m.name || m.label || `@${uname}`,
-                        name: m.name || m.label || `@${uname}`,
-                        photo: m.photo || '',
-                        username: uname,
-                        nanoUsername: uname,
-                        profileType: pType,
-                        artistId: pType === 'artist' ? uname : ''
-                      };
-                    }
-                    return { label: m.label || m.name || '' };
+                    const pType = m.profileType || 'general';
+                    return {
+                      label: m.name || m.label || `@${uname}`,
+                      name: m.name || m.label || `@${uname}`,
+                      photo: m.photo || '',
+                      username: uname,
+                      nanoUsername: uname,
+                      profileType: pType,
+                      artistId: pType === 'artist' ? uname : ''
+                    };
                   });
                   setHeroUpdates((prev) => ({ ...prev, milestones: toSave, showMilestones: true }));
                   const ok = await handleUpdateHeroField('milestones', toSave, { showMilestones: true });
