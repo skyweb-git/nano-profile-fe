@@ -785,17 +785,21 @@ export default function ProfileGeneralDashboard(props) {
               accept="image/*"
               style={{ display: 'none' }}
               disabled={isUploading === 'photo'}
-              onChange={(e) => handlePickAndCrop(
-                e,
-                isCompany ? 'auto' : 1,
-                (file) => handleUploadField('photo', file)
-              )}
+              onChange={(e) => {
+                if (isCompany) {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) handleUploadField('photo', file);
+                  return;
+                }
+                handlePickAndCrop(e, 1, (file) => handleUploadField('photo', file));
+              }}
             />
           </label>
         </div>
         {isCompany && (
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            Top profile image — the frame auto-fits your logo so it shows fully.
+            Uploads as-is — no crop step. The frame auto-fits your logo.
           </p>
         )}
       </div>
@@ -1053,8 +1057,14 @@ export default function ProfileGeneralDashboard(props) {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  // Company images: upload as-is (auto-fit). Founder banner still uses crop.
+                  if (isCompany) {
+                    e.target.value = '';
+                    if (handleUploadField) handleUploadField('companyImage', file);
+                    return;
+                  }
                   if (handlePickAndCrop) {
-                    handlePickAndCrop(e, isCompany ? 'auto' : (16 / 9), async (croppedFile) => {
+                    handlePickAndCrop(e, 16 / 9, async (croppedFile) => {
                       if (handleUploadField) {
                         await handleUploadField('companyImage', croppedFile);
                       }
@@ -1067,7 +1077,7 @@ export default function ProfileGeneralDashboard(props) {
             </label>
             {isCompany && (
               <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                Separate from the top logo. Frame auto-fits this image in Company & Venture details.
+                Separate from the top logo. Uploads as-is with auto-fit — no crop step.
               </p>
             )}
           </div>

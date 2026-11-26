@@ -437,11 +437,15 @@ export default function ProfileFounderOnboardingWizard({
                   ref={photoInputRef}
                   type="file"
                   style={{ display: 'none' }}
-                  onChange={e => handlePickAndCrop(
-                    e,
-                    isCompanyProfile ? 'auto' : 1,
-                    file => setPhotoFile(file)
-                  )}
+                  onChange={e => {
+                    if (isCompanyProfile) {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) setPhotoFile(file);
+                      return;
+                    }
+                    handlePickAndCrop(e, 1, file => setPhotoFile(file));
+                  }}
                   accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/avif,image/heic,image/heif,image/svg+xml"
                 />
               </div>
