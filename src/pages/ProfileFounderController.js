@@ -352,14 +352,27 @@ export default function ProfileFounderController(props) {
     });
   }, [user?.email, user?.displayName, onboardingStep]);
 
+  const findLinkIndex = (links, platform, linkId) => {
+    if (linkId != null && linkId !== '') {
+      const byId = links.findIndex((l) => String(l._id) === String(linkId));
+      if (byId > -1) return byId;
+    }
+    // Only fall back to platform when editing a unique instance (avoid wrong card)
+    const platformMatches = links
+      .map((l, i) => ((l.platform || '').toLowerCase() === String(platform || '').toLowerCase() ? i : -1))
+      .filter((i) => i > -1);
+    if (platformMatches.length === 1) return platformMatches[0];
+    return -1;
+  };
+
   const handleUpdateLink = async (platform, value, linkId = null) => {
     const artist = myArtists[0];
     if (!artist) return;
     setSavingLink(linkId || platform);
     try {
       let finalValue = value;
-      if (platform === 'whatsapp' && value && !value.includes('http')) {
-        let cleanNumber = value.replace(/\D/g, '');
+      if (platform === 'whatsapp' && value && !String(value).includes('http')) {
+        let cleanNumber = String(value).replace(/\D/g, '');
         if (cleanNumber.length === 10) {
           cleanNumber = '91' + cleanNumber;
         } else if (cleanNumber.length === 11 && cleanNumber.startsWith('0')) {
@@ -367,10 +380,15 @@ export default function ProfileFounderController(props) {
         }
         finalValue = `https://wa.me/${cleanNumber}`;
       }
+      // Avoid double-prefixing full URLs (e.g. twitter.com + https://x.com/...)
+      if (typeof finalValue === 'string') {
+        finalValue = finalValue.trim();
+        finalValue = finalValue.replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/https?:\/\//i, 'https://');
+      }
 
       const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
       const isFirstInstance = linkId
-        ? existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase()) === existingLinks.findIndex(l => String(l._id) === String(linkId))
+        ? existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase()) === findLinkIndex(existingLinks, platform, linkId)
         : true;
 
       const payload = { profileType };
@@ -382,6 +400,11 @@ export default function ProfileFounderController(props) {
       if (finalValue === null || (typeof finalValue === 'string' && finalValue.trim() === '')) {
         if (linkId) {
           updatedLinks = existingLinks.filter(l => String(l._id) !== String(linkId));
+          // If id missing, remove only the unique platform match
+          if (updatedLinks.length === existingLinks.length) {
+            const idx = findLinkIndex(existingLinks, platform, null);
+            if (idx > -1) updatedLinks = existingLinks.filter((_, i) => i !== idx);
+          }
         } else {
           updatedLinks = existingLinks.filter(l => (l.platform || '').toLowerCase() !== platform.toLowerCase());
         }
@@ -390,12 +413,7 @@ export default function ProfileFounderController(props) {
           setVisiblePlatforms(prev => prev.filter(p => p !== platform));
         }
       } else {
-        let idx = -1;
-        if (linkId) {
-          idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-        } else {
-          idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-        }
+        let idx = findLinkIndex(existingLinks, platform, linkId);
 
         const platformObj = ALL_PLATFORMS.find(p => p.id === platform);
         const existingTitle = idx > -1 ? existingLinks[idx].title : null;
@@ -412,6 +430,11 @@ export default function ProfileFounderController(props) {
         if (idx > -1) {
           existingLinks[idx] = newLink;
           updatedLinks = existingLinks;
+        } else if (linkId) {
+          // Intended edit but id not found — do not create a duplicate
+          console.warn('Link edit skipped: could not find link id', linkId);
+          window.alert('Could not find that link to update. Refresh and try again.');
+          return;
         } else {
           updatedLinks = [...existingLinks, newLink];
         }
@@ -431,10 +454,9 @@ export default function ProfileFounderController(props) {
       setMyArtists(prev => prev.map((a, j) => {
         if (j !== 0) return a;
         const mapped = mapFounderProfileToArtistFormat(res.data, profileType) || {};
-        // Keep the links we just wrote if response is missing them
-        if (Array.isArray(updatedLinks)) {
-          mapped.links = updatedLinks;
-        }
+        // Prefer API links (keep Mongo _ids). Fall back to local only if response empty.
+        const apiLinks = Array.isArray(res?.data?.links) ? res.data.links : null;
+        mapped.links = (apiLinks && apiLinks.length) ? apiLinks : updatedLinks;
         return mapped;
       }));
       setPendingLinks(prev => {
@@ -565,18 +587,14 @@ export default function ProfileFounderController(props) {
     const artist = myArtists[0];
     if (!artist) return;
     const existingLinks = Array.isArray(artist.links) ? [...artist.links] : [];
-    let idx = -1;
-    if (linkId) {
-      idx = existingLinks.findIndex(l => String(l._id) === String(linkId));
-    } else {
-      idx = existingLinks.findIndex(l => (l.platform || '').toLowerCase() === platform.toLowerCase());
-    }
+    const idx = findLinkIndex(existingLinks, platform, linkId);
     if (idx === -1) return;
     existingLinks[idx] = { ...existingLinks[idx], title: newTitle };
     await handleUpdateHeroField('links', existingLinks);
   };
 
-  const openLinkPopup = (platform, linkId, label, value, mode = 'value') => {
+  // Must match ProfileGeneralPlatformCard: (platform, label, value, mode, linkId)
+  const openLinkPopup = (platform, label, value, mode = 'value', linkId = null) => {
     setMobileLinkEditPlatform(platform);
     setMobileLinkEditId(linkId);
     setMobileLinkEditLabel(label);
