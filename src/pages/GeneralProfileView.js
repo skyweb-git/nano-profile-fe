@@ -1858,7 +1858,7 @@ function GeneralProfileView() {
           ((profile.milestones || []).some((m) => extractNanoUsername(m?.nanoUsername || m?.username || '')) || isPreview)
         ) && (
           <>
-            <section className="section founder-milestones-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+            <section className="section founder-milestones-section section-band-cream" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
                 <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRUSTED BY</div>
               </div>
@@ -1965,7 +1965,7 @@ function GeneralProfileView() {
         {/* FOUNDER: Traction & Milestones */}
         {!isCompany && isFounder && profile.showMilestones !== false && (((profile.milestones || []).length > 0) || isPreview) && (
           <>
-            <section className="section founder-milestones-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+            <section className="section founder-milestones-section section-band-cream" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
                 <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>TRACTION &amp; MILESTONES</div>
               </div>
@@ -2008,7 +2008,7 @@ function GeneralProfileView() {
         {/* TEAM (company) / LEADERSHIP & TEAM (founder) — after Trusted By / Milestones */}
         {isFounder && profile.showCoFounders !== false && (((profile.coFounders || []).length > 0) || isPreview) && (
           <>
-            <section className="section founder-team-section" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
+            <section className="section founder-team-section section-band-ink" style={{ paddingTop: '36px', paddingBottom: '16px', cursor: isPreview ? 'pointer' : 'default' }}>
               <div className="section-head" style={{ marginBottom: '16px' }}>
                 <div className="section-title" style={{ fontSize: '11px', letterSpacing: '4px' }}>
                   {isCompany ? 'TEAM' : 'LEADERSHIP & TEAM'}
@@ -2137,7 +2137,7 @@ function GeneralProfileView() {
                     );
                   })
                 ) : (
-                  <div style={{ padding: '14px 18px', borderRadius: '12px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b', textAlign: 'center', cursor: 'pointer' }}>
+                  <div className="section-empty-hint" style={{ padding: '14px 18px', borderRadius: '12px', border: '1.5px dashed rgba(247,243,238,0.28)', fontSize: '13px', color: 'rgba(247,243,238,0.55)', textAlign: 'center', cursor: 'pointer' }}>
                     + Click to add Co-Founders &amp; Key Team Members
                   </div>
                 )}
@@ -2150,7 +2150,7 @@ function GeneralProfileView() {
         {/* WHAT I DO (Suggestions / Ventures) — hidden for company profiles */}
         {!isCompany && showWhatIDoEffectively && (Array.isArray(suggestions) && (suggestions.length > 0 || isPreview)) && (
           <section 
-            className="section" 
+            className="section section-band-cream" 
             style={{ 
               paddingTop: '50px',
               position: 'relative',
@@ -2215,10 +2215,10 @@ function GeneralProfileView() {
         )}
         {!isCompany && showWhatIDoEffectively && (suggestions && (suggestions.length > 0 || isPreview)) && <div className="divider"></div>}
 
-        {/* CONTACTS / CONNECT — after Team on company & founder profiles */}
+        {/* CONTACTS / CONNECT — cream after dark Team (company); dark after cream What I Do (founder) */}
         {showConnectEffectively && (primaryLinks.length > 0 || isPreview) && (
           <section 
-            className="section connect-section"
+            className={`section connect-section ${isCompany ? 'section-band-cream' : ''}`}
             style={{
               position: 'relative',
               ...(profile.showConnect === false ? { 
@@ -2253,7 +2253,7 @@ function GeneralProfileView() {
             </div>
             <div className="connect-cards">
               {primaryLinks.length === 0 && isPreview ? (
-                <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b' }}>
+                <div className="section-empty-hint" style={{ padding: '12px 16px', borderRadius: '8px', border: '1.5px dashed rgba(10,10,10,0.25)', fontSize: '13px', color: '#64748b' }}>
                   + Click to add contact links
                 </div>
               ) : null}
@@ -2434,7 +2434,7 @@ function GeneralProfileView() {
           <>
             <div className="divider"></div>
             <section 
-              className="section gp-gallery-section" 
+              className={`section gp-gallery-section ${isCompany ? 'section-band-ink' : 'section-band-cream'}`}
               style={{ 
                 paddingTop: '50px',
                 position: 'relative',

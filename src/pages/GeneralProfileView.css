@@ -457,6 +457,26 @@
   text-align: left;
 }
 
+/* ── Alternating section bands (cream ↔ black) ── */
+.artist-public-wrapper .section-band-cream {
+  background: var(--cream);
+  color: var(--ink);
+}
+.artist-public-wrapper .section-band-cream .section-title {
+  color: rgba(10, 10, 10, 0.6);
+}
+.artist-public-wrapper .section-band-ink {
+  background: var(--ink);
+  color: var(--cream);
+}
+.artist-public-wrapper .section-band-ink .section-title {
+  color: rgba(247, 243, 238, 0.85) !important;
+}
+.artist-public-wrapper .section-band-ink .section-empty-hint {
+  border-color: rgba(247, 243, 238, 0.28) !important;
+  color: rgba(247, 243, 238, 0.55) !important;
+}
+
 /* ── CONNECT ── */
 .artist-public-wrapper .connect-section {
   background: var(--ink2);
@@ -467,6 +487,37 @@
 }
 .artist-public-wrapper .connect-section .section-title {
   color: rgba(247,243,238,.75);
+}
+
+/* Light Contacts band (keeps cream ↔ black stripe after a dark Team section) */
+.artist-public-wrapper .connect-section.section-band-cream {
+  background: var(--cream);
+  color: var(--ink);
+}
+.artist-public-wrapper .connect-section.section-band-cream .section-title {
+  color: rgba(10, 10, 10, 0.6);
+}
+.artist-public-wrapper .connect-section.section-band-cream .connect-card {
+  border: 1px solid rgba(10, 10, 10, 0.1);
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.artist-public-wrapper .connect-section.section-band-cream .connect-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.artist-public-wrapper .connect-section.section-band-cream .connect-platform {
+  color: rgba(10, 10, 10, 0.45);
+}
+.artist-public-wrapper .connect-section.section-band-cream .connect-card:hover .connect-platform {
+  color: rgba(255, 255, 255, 0.85);
+}
+.artist-public-wrapper .connect-section.section-band-cream .connect-card:hover {
+  color: #ffffff;
+}
+.artist-public-wrapper .connect-section.section-band-cream .section-empty-hint {
+  border-color: rgba(10, 10, 10, 0.25);
+  color: #64748b;
 }
 
 .artist-public-wrapper .connect-cards {
