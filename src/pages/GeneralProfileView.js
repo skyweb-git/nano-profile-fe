@@ -1215,10 +1215,6 @@ function GeneralProfileView() {
   // 2. RENDER STANDARD PUBLIC PROFILE VIEW (Styled same-to-same as Artist profile)
   const isPreview = window.self !== window.top;
 
-  // Top logo layout (Profile Image) — independent from Company & Venture
-  const topLogoAspect = profile.photoAspect === 'landscape' ? 'landscape' : 'portrait';
-  const ventureImageAspect = profile.companyImageAspect === 'portrait' ? 'portrait' : 'landscape';
-  const companyPhotoAspect = ventureImageAspect; // Company & Venture details only
   const isDefaultPersonAvatar = (url) => {
     const s = String(url || '');
     return s.includes('indian_general_avatar') || s.includes('indian_artist_avatar');
@@ -1323,11 +1319,7 @@ function GeneralProfileView() {
                 <img
                   src={fixImageUrl(heroPhotoSrc)}
                   alt={isCompany ? (profile.companyName || profile.name || 'Company logo') : (profile.name || 'Profile')}
-                  className={[
-                    'hero-profile-image',
-                    isCompany ? 'hero-company-logo' : '',
-                    isCompany ? (topLogoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait') : ''
-                  ].filter(Boolean).join(' ')}
+                  className={['hero-profile-image', isCompany ? 'hero-company-logo' : ''].filter(Boolean).join(' ')}
                   style={{
                     marginTop: 0,
                     marginBottom: 0,
@@ -1337,12 +1329,7 @@ function GeneralProfileView() {
               ) : (
                 <button
                   type="button"
-                  className={[
-                    'hero-profile-image',
-                    'hero-company-logo',
-                    'hero-logo-placeholder',
-                    topLogoAspect === 'landscape' ? 'hero-photo-landscape' : 'hero-photo-portrait'
-                  ].join(' ')}
+                  className="hero-profile-image hero-company-logo hero-logo-placeholder"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1376,7 +1363,7 @@ function GeneralProfileView() {
                   <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     Upload Company Logo
                   </span>
-                  <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>Portrait or Landscape</span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>Frame auto-fits your image</span>
                 </button>
               )}
               {profile.showPhoto === false && showPhotoEffectively && (
@@ -2365,7 +2352,7 @@ function GeneralProfileView() {
                       </button>
                     </div>
 
-                    {/* Company Image / Banner — portrait/landscape applies here only */}
+                    {/* Company Image / Banner — frame auto-fits the uploaded image */}
                     {companyImg ? (
                       <div style={{
                         width: '100%',
@@ -2374,9 +2361,7 @@ function GeneralProfileView() {
                         marginBottom: '20px',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                         border: '1px solid rgba(10,10,10,0.08)',
-                        background: '#0a0a0a',
-                        aspectRatio: ventureImageAspect === 'landscape' ? '16 / 9' : '3 / 4',
-                        maxHeight: ventureImageAspect === 'landscape' ? '260px' : '360px',
+                        background: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -2384,7 +2369,13 @@ function GeneralProfileView() {
                         <img
                           src={fixImageUrl(companyImg) || companyImg}
                           alt={companyName}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '420px',
+                            objectFit: 'contain',
+                            display: 'block'
+                          }}
                         />
                       </div>
                     ) : isPreview ? (

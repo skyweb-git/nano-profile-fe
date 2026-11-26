@@ -103,7 +103,9 @@ export default function ImageCropperModal({
   }, [naturalAspect, naturalSize]);
 
   // Determine initial ratio based on aspect prop
+  // aspect === 'auto' | 0 | null → keep whole image so frame can fit naturally
   const initialRatioId = useMemo(() => {
+    if (aspect === 'auto' || aspect === 0 || aspect === null) return 'original';
     if (!aspect || Math.abs(aspect - 1) < 0.05) return '1:1';
     if (aspect > 1.3) return '1.91:1';
     if (aspect < 0.85) return '9:16';

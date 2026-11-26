@@ -578,28 +578,21 @@
   filter: grayscale(0);
 }
 
-/* Top company logo — controlled only by photoAspect (Profile Image editor) */
+/* Top company logo — frame auto-fits the image (no forced crop) */
 .artist-public-wrapper .hero-profile-image.hero-company-logo {
   filter: none;
-  background: rgba(10, 10, 10, 0.03);
+  background: #ffffff;
+  width: 100%;
+  height: auto !important;
+  max-height: 520px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
-.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-portrait {
-  height: 400px;
-  object-fit: cover;
-}
-.artist-public-wrapper .hero-profile-image.hero-company-logo.hero-photo-landscape {
-  height: auto;
-  aspect-ratio: 16 / 9;
-  max-height: 280px;
-  object-fit: cover;
-}
-.artist-public-wrapper .hero-logo-placeholder.hero-photo-portrait {
-  height: 400px;
-}
-.artist-public-wrapper .hero-logo-placeholder.hero-photo-landscape {
-  height: auto;
-  aspect-ratio: 16 / 9;
-  max-height: 280px;
+.artist-public-wrapper .hero-logo-placeholder {
+  height: 220px !important;
+  min-height: 180px;
 }
 .artist-public-wrapper .hero-logo-placeholder:hover {
   border-color: rgba(200, 0, 26, 0.55) !important;

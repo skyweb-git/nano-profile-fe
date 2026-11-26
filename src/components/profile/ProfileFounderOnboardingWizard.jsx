@@ -407,36 +407,6 @@ export default function ProfileFounderOnboardingWizard({
             <p className="onboarding-subtitle">
               {isCompanyProfile ? 'Upload your company logo & about text' : 'Upload your profile image & vision'}
             </p>
-            {isCompanyProfile && typeof setPhotoAspect === 'function' && (
-              <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.25rem' }}>
-                {[
-                  { id: 'portrait', label: 'Portrait' },
-                  { id: 'landscape', label: 'Landscape' }
-                ].map(opt => {
-                  const active = (photoAspect || 'portrait') === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setPhotoAspect(opt.id)}
-                      style={{
-                        flex: 1,
-                        padding: '0.7rem 0.85rem',
-                        borderRadius: '10px',
-                        border: active ? '2px solid #0f172a' : '1px solid #cbd5e1',
-                        background: active ? '#0f172a' : '#ffffff',
-                        color: active ? '#ffffff' : '#334155',
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                        fontSize: '0.88rem'
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
             <div className="onboarding-images">
               <div className="image-upload-box">
                 <label>{isCompanyProfile ? 'Company Logo' : 'Profile Image'}</label>
@@ -450,11 +420,17 @@ export default function ProfileFounderOnboardingWizard({
                     className="upload-preview-circle"
                     style={isCompanyProfile ? {
                       borderRadius: '12px',
-                      width: photoAspect === 'landscape' ? '160px' : '96px',
-                      height: photoAspect === 'landscape' ? '90px' : '120px'
+                      width: '160px',
+                      height: '100px'
                     } : undefined}
                   >
-                    {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Preview" /> : <span>+</span>}
+                    {photoPreviewUrl ? (
+                      <img
+                        src={photoPreviewUrl}
+                        alt="Preview"
+                        style={isCompanyProfile ? { objectFit: 'contain', background: '#fff' } : undefined}
+                      />
+                    ) : <span>+</span>}
                   </div>
                 </button>
                 <input
@@ -463,7 +439,7 @@ export default function ProfileFounderOnboardingWizard({
                   style={{ display: 'none' }}
                   onChange={e => handlePickAndCrop(
                     e,
-                    isCompanyProfile && photoAspect === 'landscape' ? (16 / 9) : 1,
+                    isCompanyProfile ? 'auto' : 1,
                     file => setPhotoFile(file)
                   )}
                   accept="image/jpeg,image/jpg,image/png,image/webp,image/gif,image/bmp,image/tiff,image/avif,image/heic,image/heif,image/svg+xml"
